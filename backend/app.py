@@ -31,7 +31,11 @@ def create_app(env: str = None) -> Flask:
 
     # --- API Blueprints ---
     from .routes.auth import auth_bp
+    from .routes.screening import screening_bp
+    from .routes.admin import admin_bp
     app.register_blueprint(auth_bp)
+    app.register_blueprint(screening_bp)
+    app.register_blueprint(admin_bp)
 
     # --- Page Routes (serve templates) ---
     @app.route('/')

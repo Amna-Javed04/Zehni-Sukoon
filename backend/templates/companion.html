@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block title %}ہمدم چیٹ — AI Companion{% endblock %}
+{% block meta_description %}ذہنی سکون کا ہمدم چیٹ — ایک نجی اور محفوظ جگہ جہاں آپ اپنے جذبات کا اظہار کر سکتے ہیں۔{% endblock %}
+
+{% block content %}
+<div class="container section-padding">
+  <div class="companion-chat-wrap">
+    <div class="text-center mb-4">
+      <h2 class="section-title" data-ur="ہمدم — آپ کا اے آئی ساتھی" data-en="Humdum — Your AI Companion">ہمدم — آپ کا اے آئی ساتھی</h2>
+      <p class="text-muted" data-ur="ایک محفوظ اور نجی جگہ جہاں آپ کسی بھی وقت اپنے خیالات اور جذبات شیئر کر سکتے ہیں۔" data-en="A safe and private space where you can share your thoughts and feelings at any time.">ایک محفوظ اور نجی جگہ جہاں آپ کسی بھی وقت اپنے خیالات اور جذبات شیئر کر سکتے ہیں۔</p>
+    </div>
+
+    <!-- Chat Box -->
+    <div class="glass-card p-4">
+      <div class="chat-window" id="chat-window-box">
+        <!-- Messages dynamically injected -->
+      </div>
+
+      <form id="chat-form" class="chat-input-row" onsubmit="sendChatMessage(event)">
+        <input type="text" id="chat-input-field" class="chat-input" 
+          data-ph-ur="یہاں کچھ لکھیں..." data-ph-en="Type your message here..." required autocomplete="off">
+        <button type="submit" class="btn-zs-primary" id="chat-send-btn">
+          <i class="fas fa-paper-plane"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let chatHistory = [];
+
+document.addEventListener('DOMContentLoaded', () => {
+  const lang = getCurrentLang();
+  // Standard initial greeting
+  const welcomeMsg = lang === 'ur'
+    ? "خوش آمدید! میں ہمدم ہوں۔ آپ کیسا محسوس کر رہے ہیں؟ آپ بلا جھجھک مجھ سے کوئی بھی بات شیئر کر سکتے ہیں۔"
+    : "Welcome! I am Humdum. How are you feeling today? You can share whatever is on your mind.";
+  
+  appendMessage('bot', welcomeMsg);
+});
+
+function appendMessage(sender, text) {
+  const box = document.getElementById('chat-window-box');
+  const msgEl = document.createElement('div');
+  msgEl.className = `chat-bubble ${sender} fade-in-up`;
+  msgEl.textContent = text;
+  box.appendChild(msgEl);
+  box.scrollTop = box.scrollHeight;
+}
+
+async function sendChatMessage(e) {
+  e.preventDefault();
+  const input = document.getElementById('chat-input-field');
+  const btn = document.getElementById('chat-send-btn');
+  const text = input.value.trim();
+  const lang = getCurrentLang();
+
+  if (!text) return;
+
+  // Add user message
+  appendMessage('user', text);
+  input.value = '';
+  btn.disabled = true;
+
+  chatHistory.push({ role: 'user', content: text });
+
+  try {
+    // API endpoint for chatbot companion (wire to backend companion route)
+    const res = await Api.chat.companion(text, chatHistory);
+    appendMessage('bot', res.response);
+    chatHistory.push({ role: 'assistant', content: res.response });
+  } catch (err) {
+    // Local fallback for now if endpoint not registered/configured
+    const fallbackText = lang === 'ur'
+      ? "ہم آپ کے جذبات کا احترام کرتے ہیں۔ ہمدم اے آئی ابھی کچھ دیر میں آن لائن ہوگا۔"
+      : "I hear you, and your feelings are important. The Humdum AI will be online shortly.";
+    appendMessage('bot', fallbackText);
+  } finally {
+    btn.disabled = false;
+  }
+}
+</script>
+{% endblock %}

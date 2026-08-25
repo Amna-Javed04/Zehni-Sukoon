@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+{% block title %}مددگار وسائل — Resources{% endblock %}
+{% block meta_description %}ذہنی سکون کے لیے معلوماتی اور نفسیاتی وسائل — CBT، گراؤنڈنگ اور نیند کے طریقے، تصدیق شدہ ہیلپ لائنز۔{% endblock %}
+
+{% block content %}
+<div class="container section-padding" style="max-width: 900px;">
+  <h2 class="section-title text-center" data-ur="مددگار اور نفسیاتی وسائل" data-en="Self-Care & Resources">مددگار اور نفسیاتی وسائل</h2>
+  <p class="section-subtitle text-center" data-ur="تسکینِ قلب، بہتر نیند، اور ذہنی صحت کو بہتر بنانے کے عملی طریقے۔" data-en="Guided breathing, sleep support, and grounding practices for your mental well-being.">تسکینِ قلب، بہتر نیند، اور ذہنی صحت کو بہتر بنانے کے عملی طریقے۔</p>
+
+  <!-- Category tabs -->
+  <div class="resource-tabs justify-content-center">
+    <button class="resource-tab-btn active" onclick="filterCategory('all')" data-ur="تمام وسائل" data-en="All Resources">تمام وسائل</button>
+    <button class="resource-tab-btn" onclick="filterCategory('cbt')" data-ur="نفسیاتی طریقے (CBT)" data-en="CBT Practices">نفسیاتی طریقے (CBT)</button>
+    <button class="resource-tab-btn" onclick="filterCategory('grounding')" data-ur="پرسکون ہونے کے طریقے" data-en="Grounding Exercises">پرسکون ہونے کے طریقے</button>
+    <button class="resource-tab-btn" onclick="filterCategory('sleep')" data-ur="بہتر نیند کے طریقے" data-en="Sleep Hygiene">بہتر نیند کے طریقے</button>
+  </div>
+
+  <div class="row g-4 mt-2" id="resources-container">
+    <!-- Resources will be dynamically populated/filtered here -->
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const RESOURCES_DATA = [
+  {
+    category: "cbt",
+    title: { ur: "خیالات کا جائزہ (Thought Record)", en: "Thought Record Worksheet" },
+    desc: {
+      ur: "اپنے منفی اور پریشان کن خیالات کو لکھیں اور ان کی سچائی کا حقیقت پسندانہ جائزہ لیں۔",
+      en: "Document your negative thoughts, identify cognitive distortions, and rewrite them with realistic alternatives."
+    },
+    icon: "fa-pencil-alt"
+  },
+  {
+    category: "cbt",
+    title: { ur: "رویہ کی تبدیلی (Behavioral Activation)", en: "Behavioral Activation" },
+    desc: {
+      ur: "روزانہ ایک چھوٹی اور خوشگوار سرگرمی کا انتخاب کریں جو آپ کو خوشی یا طمانیت دے۔",
+      en: "Select and schedule small, meaningful activities daily to improve positive reinforcement and mood."
+    },
+    icon: "fa-calendar-check"
+  },
+  {
+    category: "grounding",
+    title: { ur: "۵-۴-۳-۲-۱ کا طریقہ (5-4-3-2-1 Technique)", en: "5-4-3-2-1 Grounding Method" },
+    desc: {
+      ur: "اپنے ارد گرد ۵ چیزوں کو دیکھیں، ۴ کو چھوئیں، ۳ کی آواز سنیں، ۲ کو سونگھیں، اور ۱ کا ذائقہ چکھیں۔",
+      en: "Notice 5 things you see, 4 you can touch, 3 you hear, 2 you smell, and 1 you can taste to bring focus back to the present."
+    },
+    icon: "fa-anchor"
+  },
+  {
+    category: "grounding",
+    title: { ur: "پٹھوں کو ڈھیلا چھوڑنا (PMR)", en: "Progressive Muscle Relaxation" },
+    desc: {
+      ur: "جسم کے مختلف پٹھوں کو ۵ سیکنڈ کے لیے سخت کریں اور پھر آہستہ آہستہ ڈھیلا چھوڑ دیں۔",
+      en: "Systematically tense and release muscle groups from your toes to your face to release physical stress."
+    },
+    icon: "fa-spa"
+  },
+  {
+    category: "sleep",
+    title: { ur: "نیند کا معمول (Sleep Hygiene)", en: "Establishing a Sleep Routine" },
+    desc: {
+      ur: "روزانہ ایک ہی وقت پر سونے اور جاگنے کی عادت ڈالیں اور بستر پر جانے سے ۱ گھنٹہ پہلے اسکرین کا استعمال بند کریں۔",
+      en: "Keep consistent sleep-wake times and shut off screens 60 minutes before bedtime to support deep rest."
+    },
+    icon: "fa-bed"
+  },
+  {
+    category: "sleep",
+    title: { ur: "دماغ کو خالی کریں (Brain Dump)", en: "Pre-Sleep Brain Dump" },
+    desc: {
+      ur: "سونے سے پہلے اپنی تمام تر پریشانیاں یا اگلے دن کے کام کاغذ پر لکھ دیں تاکہ دماغ پرسکون ہو سکے۔",
+      en: "Write down your lingering thoughts, fears, or to-do lists before sleeping to clear mental clutter."
+    },
+    icon: "fa-brain"
+  }
+];
+
+function filterCategory(cat) {
+  // Update tab buttons
+  const buttons = document.querySelectorAll('.resource-tab-btn');
+  buttons.forEach(btn => {
+    btn.classList.remove('active');
+  });
+
+  // Find active button and set class
+  event.target.classList.add('active');
+
+  renderResources(cat);
+}
+
+function renderResources(category = 'all') {
+  const lang = getCurrentLang();
+  const isUr = lang === 'ur';
+  const container = document.getElementById('resources-container');
+  container.innerHTML = '';
+
+  const filtered = category === 'all' 
+    ? RESOURCES_DATA 
+    : RESOURCES_DATA.filter(r => r.category === category);
+
+  filtered.forEach(res => {
+    const titleText = isUr ? res.title.ur : res.title.en;
+    const descText = isUr ? res.desc.ur : res.desc.en;
+
+    const card = document.createElement('div');
+    card.className = 'col-md-6 fade-in-up';
+    card.innerHTML = `
+      <div class="glass-card resource-card p-4 h-100 d-flex flex-column gap-3">
+        <div class="d-flex align-items-center gap-3">
+          <div class="resource-icon"><i class="fas ${res.icon}"></i></div>
+          <h4 class="mb-0 font-weight-bold" style="font-size:1.1rem; color:var(--brand-green-dark);">${titleText}</h4>
+        </div>
+        <p class="text-muted mb-0" style="font-size:0.92rem; line-height:1.65;">${descText}</p>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+// Initial render
+document.addEventListener('DOMContentLoaded', () => {
+  renderResources('all');
+});
+</script>
+
+<style>
+.resource-card {
+  border: 1px solid rgba(131,151,145,0.2);
+  transition: var(--transition);
+}
+.resource-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--brand-green);
+}
+.resource-icon {
+  width: 48px;
+  height: 48px;
+  background: rgba(101,88,122,0.12);
+  color: var(--brand-lavender);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+</style>
+{% endblock %}

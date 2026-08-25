@@ -1,0 +1,235 @@
+{% extends 'base.html' %}
+{% block title %}ذہنی سکون — Zehni Sukoon{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section">
+  <div class="container">
+    <div class="hero-layout">
+      <div class="hero-content fade-in-up">
+        <div class="privacy-badge">
+          <i class="fas fa-user-shield"></i>
+          <span data-ur="۱۰۰٪ نجی اور گمنام" data-en="100% Private & Anonymous">۱۰۰٪ نجی اور گمنام</span>
+        </div>
+        <h1 class="hero-title" data-ur="اپنے جذبات کو سمجھیں، ذہنی سکون پائیں" data-en="Understand Your Feelings, Find Peace of Mind">اپنے جذبات کو سمجھیں، ذہنی سکون پائیں</h1>
+        <p class="hero-subtitle mb-4" data-ur="خفیہ اور مفت جانچ، اب اردو اور انگریزی دونوں زبانوں میں۔" data-en="Safe, confidential mental health check-in, now available in both Urdu and English.">خفیہ اور مفت جانچ، اب اردو اور انگریزی دونوں زبانوں میں۔</p>
+        
+        <div class="d-flex flex-wrap gap-3 mt-2">
+          <a href="{{ url_for('screening') }}" class="btn btn-zs-primary btn-zs-lg" data-ur="ابھی جانچ شروع کریں" data-en="Start Check-in">ابھی جانچ شروع کریں</a>
+          <a href="#breathing-section" class="btn btn-zs-outline btn-zs-lg" data-ur="سکون کا سانس" data-en="Take a Breath">سکون کا سانس</a>
+        </div>
+      </div>
+      <div class="hero-media fade-in-up">
+        <!-- Replaced generic placeholders with actual leaf + crescent vector design -->
+        <svg viewBox="0 0 400 400" width="100%" height="auto" style="max-width:360px;" aria-hidden="true">
+          <defs>
+            <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#f1edeb" />
+              <stop offset="100%" stop-color="#e0d9eb" />
+            </linearGradient>
+            <linearGradient id="leaf-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#839791" />
+              <stop offset="100%" stop-color="#4e635e" />
+            </linearGradient>
+          </defs>
+          <circle cx="200" cy="200" r="180" fill="url(#bg-grad)" opacity="0.6"/>
+          <!-- Crescent Lavender shadow shape -->
+          <path d="M 230 110 A 90 90 0 0 0 140 200 A 90 90 0 0 0 230 290 A 70 70 0 0 1 230 110 Z" fill="#65587a" opacity="0.18" />
+          <!-- The crescent moon element representing Sukoon -->
+          <path d="M 220 120 A 80 80 0 0 0 140 200 A 80 80 0 0 0 220 280 A 65 65 0 0 1 220 120 Z" fill="#e0d9eb" stroke="#65587a" stroke-width="2" />
+          <!-- Leaf element representing Zehn/Growth -->
+          <path d="M 130 270 C 130 270 110 180 180 130 C 180 130 250 170 210 240 C 210 240 170 260 130 270 Z" fill="url(#leaf-grad)" />
+          <!-- Stem vein lines on the leaf -->
+          <path d="M 130 270 Q 170 210 180 130" stroke="#fbf9f8" stroke-width="2" fill="none" opacity="0.7"/>
+          <path d="M 155 235 Q 180 220 195 225" stroke="#fbf9f8" stroke-width="1.5" fill="none" opacity="0.5" />
+          <path d="M 175 205 Q 195 190 205 192" stroke="#fbf9f8" stroke-width="1.5" fill="none" opacity="0.5" />
+        </svg>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Features Grid -->
+<section class="section-padding" style="background:var(--brand-cream-dark);">
+  <div class="container">
+    <h2 class="section-title text-center" data-ur="ہمارے بنیادی فیچرز" data-en="Key Features">ہمارے بنیادی فیچرز</h2>
+    <p class="section-subtitle text-center" data-ur="ذہنی صحت کی بہتری کے لیے ڈیزائن کیے گئے خصوصی فیچرز" data-en="Features crafted carefully to prioritize your emotional state">ذہنی صحت کی بہتری کے لیے ڈیزائن کیے گئے خصوصی فیچرز</p>
+    
+    <div class="features-grid">
+      <!-- Feature 1 -->
+      <div class="glass-card feature-item">
+        <div class="feature-icon"><i class="fas fa-clipboard-check"></i></div>
+        <h3 data-ur="آسان اور نجی اسکریننگ" data-en="Confidential Screening">آسان اور نجی اسکریننگ</h3>
+        <p class="text-muted" data-ur="PHQ-9 اور GAD-7 کے ذریعے افسردگی اور گھبراہٹ کی تیز رفتار جانچ کریں۔" data-en="Verify depression or anxiety levels using clinical standard PHQ-9 and GAD-7 forms.">PHQ-9 اور GAD-7 کے ذریعے افسردگی اور گھبراہٹ کی تیز رفتار جانچ کریں۔</p>
+      </div>
+      <!-- Feature 2 -->
+      <div class="glass-card feature-item">
+        <div class="feature-icon"><i class="fas fa-robot"></i></div>
+        <h3 data-ur="اے آئی کی مدد سے تجزیہ" data-en="AI-Powered Ensemble">اے آئی کی مدد سے تجزیہ</h3>
+        <p class="text-muted" data-ur="مشین لرننگ کے تین مختلف ماڈلز کی مدد سے مزید درست اور مستند نتائج۔" data-en="Ensemble predictions from 3 different models ensure secure and highly accurate reports.">مشین لرننگ کے تین مختلف ماڈلز کی مدد سے مزید درست اور مستند نتائج۔</p>
+      </div>
+      <!-- Feature 3 -->
+      <div class="glass-card feature-item">
+        <div class="feature-icon"><i class="fas fa-comments"></i></div>
+        <h3 data-ur="ذہنی صحت کا ہمدم (چیٹ)" data-en="Calming Companion">ذہنی صحت کا ہمدم (چیٹ)</h3>
+        <p class="text-muted" data-ur="کسی بھی وقت بات چیت کے لیے دستیاب ہمدرد اے آئی ساتھی۔" data-en="Share your mind with an AI companion designed to listen, guide and support.">کسی بھی وقت بات چیت کے لیے دستیاب ہمدرد اے آئی ساتھی۔</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Box Breathing Extra Section -->
+<section id="breathing-section" class="section-padding">
+  <div class="container" style="max-width: 600px;">
+    <div class="glass-card breathing-card fade-in-up">
+      <h2 class="mb-2" data-ur="باکس بریدنگ (سانس کی مشق)" data-en="Box Breathing Exercise">باکس بریدنگ (سانس کی مشق)</h2>
+      <p class="text-muted mb-4" data-ur="گہرے سانس لینے کی یہ مشق فوری طور پر دل کی دھڑکن اور اعصاب کو پرسکون کرتی ہے۔" data-en="A simple, evidence-based breathing pattern to calm down and relax the nervous system.">گہرے سانس لینے کی یہ مشق فوری طور پر دل کی دھڑکن اور اعصاب کو پرسکون کرتی ہے۔</p>
+      
+      <div class="breathing-circle-wrap">
+        <div id="breathing-circle" class="breathing-circle">
+          <div class="breathing-label-inner" id="breathing-label" data-ur="شروع کریں" data-en="Start">شروع کریں</div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-3 justify-content-center mt-4">
+        <button class="btn btn-zs-primary" id="breathe-toggle-btn" onclick="toggleBreathing()" data-ur="مشق شروع کریں" data-en="Start Exercise">مشق شروع کریں</button>
+        <button class="btn btn-zs-outline" onclick="resetBreathing()" data-ur="ری سیٹ" data-en="Reset">ری سیٹ</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Privacy Disclaimer -->
+<section class="section-padding" style="background:var(--brand-cream-dark); padding: 2.5rem 0;">
+  <div class="container">
+    <div style="background: rgba(101,88,122,0.06); border-right: 4px solid var(--brand-lavender); padding: 1.5rem; border-radius: var(--radius-sm);">
+      <p class="mb-0 text-muted" style="font-size:0.92rem; line-height:1.7;">
+        <i class="fas fa-info-circle me-1" style="color:var(--brand-lavender)"></i>
+        <strong data-ur="اہم نوٹ:" data-en="Important Note:">اہم نوٹ:</strong>
+        <span data-ur="ذہنی سکون صرف ابتدائی جانچ اور رہنمائی کے لیے ہے، یہ کسی ڈاکٹر یا معالج کا نعم البدل نہیں ہے۔ کسی ہنگامی صورت حال یا سنگین ذہنی دباؤ میں براہِ کرم تصدیق شدہ ہیلپ لائنز یا قریبی اسپتال سے رابطہ کریں۔" data-en="Zehni Sukoon is for screening and general support. It is not a diagnostic tool or clinical advice. If you are in immediate crisis, please call our verified helpline or visit the nearest professional healthcare center.">ذہنی سکون صرف ابتدائی جانچ اور رہنمائی کے لیے ہے، یہ کسی ڈاکٹر یا معالج کا نعم البدل نہیں ہے۔ کسی ہنگامی صورت حال یا سنگین ذہنی دباؤ میں براہِ کرم تصدیق شدہ ہیلپ لائنز یا قریبی اسپتال سے رابطہ کریں۔</span>
+      </p>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Box Breathing Controller
+let breathingInterval = null;
+let breathingState = 0; // 0: idle, 1: inhale, 2: hold, 3: exhale, 4: hold
+let breathingTimer = null;
+let isBreathingActive = false;
+
+function toggleBreathing() {
+  const btn = document.getElementById('breathe-toggle-btn');
+  const lang = getCurrentLang();
+
+  if (isBreathingActive) {
+    stopBreathing();
+    btn.textContent = lang === 'ur' ? 'مشق شروع کریں' : 'Start Exercise';
+  } else {
+    startBreathing();
+    btn.textContent = lang === 'ur' ? 'مشق روکیں' : 'Stop Exercise';
+  }
+}
+
+function startBreathing() {
+  isBreathingActive = true;
+  breathingState = 1;
+  runBreathingStep();
+}
+
+function runBreathingStep() {
+  if (!isBreathingActive) return;
+
+  const circle = document.getElementById('breathing-circle');
+  const label = document.getElementById('breathing-label');
+  const lang = getCurrentLang();
+
+  let nextTimeout = 4000;
+
+  if (breathingState === 1) { // Inhale
+    circle.style.transform = 'scale(1.4)';
+    circle.style.transition = 'transform 4s ease-in-out';
+    label.textContent = lang === 'ur' ? 'سانس اندر کھینچیں (۴ سیکنڈ)' : 'Breathe In (4s)';
+    breathingState = 2;
+  } else if (breathingState === 2) { // Hold
+    circle.style.transform = 'scale(1.4)';
+    label.textContent = lang === 'ur' ? 'سانس روکیں (۴ سیکنڈ)' : 'Hold (4s)';
+    breathingState = 3;
+  } else if (breathingState === 3) { // Exhale
+    circle.style.transform = 'scale(1.0)';
+    circle.style.transition = 'transform 4s ease-in-out';
+    label.textContent = lang === 'ur' ? 'سانس باہر نکالیں (۴ سیکنڈ)' : 'Breathe Out (4s)';
+    breathingState = 4;
+  } else if (breathingState === 4) { // Hold
+    circle.style.transform = 'scale(1.0)';
+    label.textContent = lang === 'ur' ? 'سانس روکیں (۴ سیکنڈ)' : 'Hold (4s)';
+    breathingState = 1;
+  }
+
+  breathingTimer = setTimeout(runBreathingStep, nextTimeout);
+}
+
+function stopBreathing() {
+  isBreathingActive = false;
+  clearTimeout(breathingTimer);
+  const circle = document.getElementById('breathing-circle');
+  const label = document.getElementById('breathing-label');
+  const lang = getCurrentLang();
+  
+  circle.style.transform = 'scale(1.0)';
+  circle.style.transition = 'transform 0.5s ease';
+  label.textContent = lang === 'ur' ? 'شروع کریں' : 'Start';
+}
+
+function resetBreathing() {
+  stopBreathing();
+  const btn = document.getElementById('breathe-toggle-btn');
+  const lang = getCurrentLang();
+  btn.textContent = lang === 'ur' ? 'مشق شروع کریں' : 'Start Exercise';
+}
+</script>
+
+<style>
+.hero-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: center;
+  gap: 3rem;
+  padding: 1.5rem 0;
+}
+@media (min-width: 768px) {
+  .hero-layout {
+    grid-template-columns: 1.2fr 0.8fr;
+  }
+}
+.features-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+@media (min-width: 768px) {
+  .features-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+.feature-item {
+  padding: 2rem;
+  text-align: center;
+}
+.feature-icon {
+  width: 56px;
+  height: 56px;
+  background: rgba(78,99,94,0.12);
+  color: var(--brand-green);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  margin: 0 auto 1rem;
+}
+</style>
+{% endblock %}

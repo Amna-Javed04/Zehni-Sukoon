@@ -1,0 +1,491 @@
+{% extends 'base.html' %}
+{% block title %}ذہنی صحت کی جانچ — Zehni Sukoon{% endblock %}
+{% block meta_description %}ذہنی صحت کی جانچ — PHQ-9 اور GAD-7 خود تشخیصی فارم۔{% endblock %}
+
+{% block content %}
+<div class="container section-padding" style="max-width: 800px;">
+  <!-- Progress indicators or flow steps -->
+  <div class="flow-steps-indicator text-center mb-4">
+    <span class="step-badge active" id="step-badge-1" data-ur="1. انتخاب" data-en="1. Select">1. انتخاب</span>
+    <span class="step-connector"></span>
+    <span class="step-badge" id="step-badge-2" data-ur="2. رضامندی" data-en="2. Consent">2. رضامندی</span>
+    <span class="step-connector"></span>
+    <span class="step-badge" id="step-badge-3" data-ur="3. معلومات" data-en="3. Details">3. معلومات</span>
+    <span class="step-connector"></span>
+    <span class="step-badge" id="step-badge-4" data-ur="4. جانچ" data-en="4. Screening">4. جانچ</span>
+    <span class="step-connector"></span>
+    <span class="step-badge" id="step-badge-5" data-ur="5. نتائج" data-en="5. Results">5. نتائج</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       STAGE 1: SELECT ASSESSMENT
+       ═══════════════════════════════════════════════════════ -->
+  <div id="stage-select" class="glass-card p-5 fade-in-up">
+    <h2 class="text-center mb-3" data-ur="اپنے جذبات کی جانچ کریں" data-en="Check-in With Yourself">اپنے جذبات کی جانچ کریں</h2>
+    <p class="text-center text-muted mb-4" data-ur="براہ کرم ان دو میں سے کسی ایک کا انتخاب کریں" data-en="Please select one of the screening options below">براہ کرم ان دو میں سے کسی ایک کا انتخاب کریں</p>
+    
+    <div class="pathway-grid">
+      <!-- PHQ-9 Card -->
+      <div class="glass-card pathway-card" onclick="selectAssessment('phq9')">
+        <div class="pathway-icon"><i class="fas fa-smile"></i></div>
+        <h3 data-ur="مزاج کی جانچ (PHQ-9)" data-en="Mood Assessment (PHQ-9)">مزاج کی جانچ (PHQ-9)</h3>
+        <p class="text-muted" style="font-size:0.9rem;" data-ur="افسردگی اور روزمرہ کی کیفیت کے بارے میں ۹ آسان سوالات۔" data-en="9 short questions about mood and daily interests over the last 2 weeks.">افسردگی اور روزمرہ کی کیفیت کے بارے میں ۹ آسان سوالات۔</p>
+      </div>
+
+      <!-- GAD-7 Card -->
+      <div class="glass-card pathway-card" onclick="selectAssessment('gad7')">
+        <div class="pathway-icon"><i class="fas fa-heart"></i></div>
+        <h3 data-ur="گھبراہٹ کی جانچ (GAD-7)" data-en="Anxiety Assessment (GAD-7)">گھبراہٹ کی جانچ (GAD-7)</h3>
+        <p class="text-muted" style="font-size:0.9rem;" data-ur="تناؤ، خوف اور بے چینی سے متعلق ۷ بنیادی سوالات۔" data-en="7 simple questions about worry, anxiety, and tension.">تناؤ، خوف اور بے چینی سے متعلق ۷ بنیادی سوالات۔</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       STAGE 2: CONSENT
+       ═══════════════════════════════════════════════════════ -->
+  <div id="stage-consent" class="glass-card p-5 fade-in-up d-none">
+    <h2 class="mb-3 text-center" data-ur="آپ کی رضامندی اور پرائیویسی" data-en="Your Consent & Privacy">آپ کی رضامندی اور پرائیویسی</h2>
+    
+    <div class="consent-info-box text-muted mb-4">
+      <p data-ur="ہم آپ کی پرائیویسی کا بے حد احترام کرتے ہیں۔ آپ کی فراہم کردہ معلومات کو مکمل طور پر گمنام رکھا جائے گا۔" data-en="We deeply value your privacy. Any information you provide is strictly confidential and anonymous.">ہم آپ کی پرائیویسی کا بے حد احترام کرتے ہیں۔ آپ کی فراہم کردہ معلومات کو مکمل طور پر گمنام رکھا جائے گا۔</p>
+      <p data-ur="ذہنی سکون ایک معلوماتی اور ابتدائی جانچ کا آلہ ہے، یہ کوئی باضابطہ طبی یا نفسیاتی تشخیص نہیں ہے۔" data-en="Zehni Sukoon is a screening and awareness tool, not a clinical or diagnostic medical opinion.">ذہنی سکون ایک معلوماتی اور ابتدائی جانچ کا آلہ ہے، یہ کوئی باضابطہ طبی یا نفسیاتی تشخیص نہیں ہے۔</p>
+    </div>
+
+    <div class="consent-check-row">
+      <input type="checkbox" id="consent-check" onchange="toggleConsentBtn()">
+      <label for="consent-check" data-ur="میں سمجھتا ہوں کہ یہ ایک اسکریننگ ٹول ہے اور میں آگے بڑھنے پر رضامند ہوں۔" data-en="I understand that this is a screening tool, and I consent to proceed.">میں سمجھتا ہوں کہ یہ ایک اسکریننگ ٹول ہے اور میں آگے بڑھنے پر رضامند ہوں۔</label>
+    </div>
+
+    <div class="d-flex gap-3 mt-4 justify-content-end">
+      <button class="btn btn-zs-outline" onclick="goToStage('select')" data-ur="واپس" data-en="Back">واپس</button>
+      <button id="consent-next-btn" class="btn btn-zs-primary" disabled onclick="goToStage('details')" data-ur="جاری رکھیں" data-en="Continue">جاری رکھیں</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       STAGE 3: DEMOGRAPHICS & DETAILS
+       ═══════════════════════════════════════════════════════ -->
+  <div id="stage-details" class="glass-card p-5 fade-in-up d-none">
+    <h2 class="mb-3 text-center" data-ur="کچھ بنیادی معلومات" data-en="A Few Details First">کچھ بنیادی معلومات</h2>
+    <p class="text-center text-muted mb-4" data-ur="یہ معلومات ماڈل کی درستگی کو بہتر بنانے میں مدد دیتی ہیں۔" data-en="These optional fields help improve screening insights.">یہ معلومات ماڈل کی درستگی کو بہتر بنانے میں مدد دیتی ہیں۔</p>
+
+    <div class="mb-4">
+      <label class="form-label-zs" data-ur="عمر کا گروپ" data-en="Age Group">عمر کا گروپ</label>
+      <select id="age-group" class="form-control-zs">
+        <option value="18-24" selected>18-24</option>
+        <option value="25-34">25-34</option>
+        <option value="35-44">35-44</option>
+        <option value="45-54">45-54</option>
+        <option value="55+">55+</option>
+      </select>
+    </div>
+
+    <div class="mb-4">
+      <label class="form-label-zs" data-ur="جنس" data-en="Gender">جنس</label>
+      <select id="gender" class="form-control-zs">
+        <option value="Female" selected data-ur="خاتون" data-en="Female">خاتون</option>
+        <option value="Male" data-ur="مرد" data-en="Male">مرد</option>
+        <option value="Other" data-ur="دیگر" data-en="Other">دیگر</option>
+      </select>
+    </div>
+
+    <div class="d-flex gap-3 justify-content-end">
+      <button class="btn btn-zs-outline" onclick="goToStage('consent')" data-ur="واپس" data-en="Back">واپس</button>
+      <button class="btn btn-zs-primary" onclick="startQuestions()" data-ur="شروع کریں" data-en="Start screening">شروع کریں</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       STAGE 4: SCREENING FORM
+       ═══════════════════════════════════════════════════════ -->
+  <div id="stage-questions" class="glass-card p-5 fade-in-up d-none">
+    <div class="progress-bar-wrap">
+      <div id="screening-progress" class="progress-bar-fill" style="width: 0%;"></div>
+    </div>
+
+    <div id="question-container">
+      <!-- Active Question will be dynamically injected here -->
+    </div>
+
+    <div class="d-flex gap-3 justify-content-between mt-5">
+      <button id="prev-question-btn" class="btn btn-zs-outline" onclick="prevQuestion()" data-ur="پیچھے" data-en="Previous">پیچھے</button>
+      <button id="next-question-btn" class="btn btn-zs-primary" onclick="nextQuestion()" data-ur="اگلا" data-en="Next">اگلا</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       STAGE 5: RESULTS
+       ═══════════════════════════════════════════════════════ -->
+  <div id="stage-results" class="glass-card p-5 fade-in-up d-none">
+    <h2 class="text-center mb-3" data-ur="آپ کے نتائج" data-en="Your Results">آپ کے نتائج</h2>
+    
+    <div class="text-center my-4">
+      <div class="score-display-circle">
+        <span id="result-score" class="result-score-value">0</span>
+        <span class="result-score-label" data-ur="کل سکور" data-en="Total Score">کل سکور</span>
+      </div>
+      <div class="mt-3">
+        <span id="result-severity-badge" class="severity-badge">Minimal</span>
+      </div>
+    </div>
+
+    <div class="result-desc-box text-center text-muted mb-4" id="result-description">
+      <!-- Guidance text based on score -->
+    </div>
+
+    <!-- Ensemble details (Only visible for PHQ-9) -->
+    <div id="ensemble-details-box" class="mb-4 d-none">
+      <h4 class="mb-3 text-center" data-ur="اے آئی ماڈل کے نتائج" data-en="AI Ensemble Insights">اے آئی ماڈل کے نتائج</h4>
+      <div class="model-vote-row">
+        <span>Random Forest</span>
+        <span id="vote-rf">-</span>
+      </div>
+      <div class="model-vote-row">
+        <span>SVM</span>
+        <span id="vote-svm">-</span>
+      </div>
+      <div class="model-vote-row">
+        <span>XGBoost</span>
+        <span id="vote-xgb">-</span>
+      </div>
+    </div>
+
+    <!-- Actions / Next Steps -->
+    <div class="d-flex flex-column gap-2 mt-4">
+      <a href="{{ url_for('resources') }}" class="btn btn-zs-primary text-center" data-ur="مددگار وسائل دیکھیں" data-en="Explore resources">مددگار وسائل دیکھیں</a>
+      <button class="btn btn-zs-outline" onclick="resetScreening()" data-ur="دوبارہ جانچ کریں" data-en="Retake Assessment">دوبارہ جانچ کریں</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Questions database
+const PHQ9_QUESTIONS = [
+  { ur: "کاموں میں کم دلچسپی یا لطف لینا", en: "Little interest or pleasure in doing things" },
+  { ur: "اداس، مایوس یا افسردہ محسوس کرنا", en: "Feeling down, depressed, or hopeless" },
+  { ur: "سونے میں مشکل، جلدی آنکھ کھلنا، یا بہت زیادہ سونا", en: "Trouble falling or staying asleep, or sleeping too much" },
+  { ur: "تھکن یا توانائی میں کمی محسوس کرنا", en: "Feeling tired or having little energy" },
+  { ur: "بھوک کی کمی یا بہت زیادہ کھانا", en: "Poor appetite or overeating" },
+  { ur: "اپنے بارے میں برا محسوس کرنا — یا یہ کہ آپ ناکام ہیں اور آپ نے اپنے آپ کو یا اپنے خاندان کو مایوس کیا", en: "Feeling bad about yourself — or that you are a failure or have let yourself or your family down" },
+  { ur: "چیزوں پر توجہ مرکوز کرنے میں دشواری، جیسے اخبار پڑھنا یا ٹیلی ویژن دیکھنا", en: "Trouble concentrating on things, such as reading the newspaper or watching television" },
+  { ur: "بات چیت یا حرکت میں اس قدر سستی کہ دوسرے محسوس کر سکیں؟ یا اس کے برعکس بے چینی کہ معمول سے زیادہ حرکت کرنا", en: "Moving or speaking so slowly that other people could have noticed? Or the opposite — being so fidgety or restless that you have been moving around a lot more than usual" },
+  { ur: "ایسے خیالات کہ مر جانا بہتر ہے یا اپنے آپ کو کسی طرح نقصان پہنچانا", en: "Thoughts that you would be better off dead or of hurting yourself in some way" }
+];
+
+const GAD7_QUESTIONS = [
+  { ur: "گھبراہٹ، بے چینی، یا تناؤ محسوس کرنا", en: "Feeling nervous, anxious, or on edge" },
+  { ur: "فکر کو روکنے یا قابو میں رکھنے کے قابل نہ ہونا", en: "Not being able to stop or control worrying" },
+  { ur: "مختلف چیزوں کے بارے میں بہت زیادہ فکر کرنا", en: "Worrying too much about different things" },
+  { ur: "پُرسکون ہونے میں مشکل محسوس کرنا", en: "Trouble relaxing" },
+  { ur: "اس قدر بے چین ہونا کہ خاموش بیٹھنا مشکل ہو", en: "Being so restless that it is hard to sit still" },
+  { ur: "آسانی سے چڑچڑا ہونا یا ناراض ہو جانا", en: "Becoming easily annoyed or irritable" },
+  { ur: "خوف محسوس ہونا، جیسے کوئی بہت برا واقعہ پیش آنے والا ہو", en: "Feeling afraid, as if something awful might happen" }
+];
+
+const OPTION_LABELS = {
+  ur: [
+    { text: "بالکل نہیں", score: 0 },
+    { text: "کئی دن", score: 1 },
+    { text: "آدھے سے زیادہ دن", score: 2 },
+    { text: "تقریباً ہر روز", score: 3 }
+  ],
+  en: [
+    { text: "Not at all", score: 0 },
+    { text: "Several days", score: 1 },
+    { text: "More than half the days", score: 2 },
+    { text: "Nearly every day", score: 3 }
+  ]
+};
+
+let currentAssessment = null;
+let currentQuestions = [];
+let answers = [];
+let currentQuestionIndex = 0;
+
+function selectAssessment(type) {
+  currentAssessment = type;
+  currentQuestions = type === 'phq9' ? PHQ9_QUESTIONS : GAD7_QUESTIONS;
+  answers = new Array(currentQuestions.length).fill(null);
+  goToStage('consent');
+}
+
+function goToStage(stageId) {
+  // Hide all stages
+  ['select', 'consent', 'details', 'questions', 'results'].forEach(id => {
+    document.getElementById(`stage-${id}`).classList.add('d-none');
+  });
+
+  // Show active stage
+  document.getElementById(`stage-${stageId}`).classList.remove('d-none');
+
+  // Update step badges
+  document.querySelectorAll('.step-badge').forEach(b => b.classList.remove('active'));
+  
+  let activeBadgeIndex = 1;
+  if (stageId === 'consent') activeBadgeIndex = 2;
+  else if (stageId === 'details') activeBadgeIndex = 3;
+  else if (stageId === 'questions') activeBadgeIndex = 4;
+  else if (stageId === 'results') activeBadgeIndex = 5;
+
+  const activeBadge = document.getElementById(`step-badge-${activeBadgeIndex}`);
+  if (activeBadge) activeBadge.classList.add('active');
+}
+
+function toggleConsentBtn() {
+  const isChecked = document.getElementById('consent-check').checked;
+  document.getElementById('consent-next-btn').disabled = !isChecked;
+}
+
+function startQuestions() {
+  currentQuestionIndex = 0;
+  goToStage('questions');
+  renderQuestion();
+}
+
+function renderQuestion() {
+  const lang = getCurrentLang();
+  const q = currentQuestions[currentQuestionIndex];
+  const container = document.getElementById('question-container');
+  
+  const text = lang === 'ur' ? q.ur : q.en;
+  const options = OPTION_LABELS[lang];
+  const storedAnswer = answers[currentQuestionIndex];
+
+  let html = `
+    <div class="question-header mb-4 text-center">
+      <span class="question-number" data-ur="سوال ${currentQuestionIndex + 1} از ${currentQuestions.length}" data-en="Question ${currentQuestionIndex + 1} of ${currentQuestions.length}">سوال ${currentQuestionIndex + 1} از ${currentQuestions.length}</span>
+      <h3 class="mt-2">${text}</h3>
+    </div>
+    <div class="pill-options">
+  `;
+
+  options.forEach(opt => {
+    const isChecked = storedAnswer === opt.score ? 'checked' : '';
+    html += `
+      <div class="pill-option">
+        <input type="radio" name="q-option" id="opt-${opt.score}" value="${opt.score}" ${isChecked} onchange="setAnswer(${opt.score})">
+        <label for="opt-${opt.score}">${opt.text}</label>
+      </div>
+    `;
+  });
+
+  html += `</div>`;
+  container.innerHTML = html;
+
+  // Update navigation buttons
+  document.getElementById('prev-question-btn').disabled = currentQuestionIndex === 0;
+  
+  const nextBtn = document.getElementById('next-question-btn');
+  const isLast = currentQuestionIndex === currentQuestions.length - 1;
+  nextBtn.textContent = isLast ? (lang === 'ur' ? 'جمع کروائیں' : 'Submit') : (lang === 'ur' ? 'اگلا' : 'Next');
+
+  // Update progress bar
+  const pct = ((currentQuestionIndex) / currentQuestions.length) * 100;
+  document.getElementById('screening-progress').style.width = `${pct}%`;
+}
+
+function setAnswer(val) {
+  // If PHQ-9 Q9 (suicide risk) is selected with a score > 0, redirect to crisis screen immediately
+  if (currentAssessment === 'phq9' && currentQuestionIndex === 8 && val > 0) {
+    window.location.href = '/crisis';
+    return;
+  }
+
+  answers[currentQuestionIndex] = val;
+}
+
+function nextQuestion() {
+  if (answers[currentQuestionIndex] === null) {
+    const lang = getCurrentLang();
+    showFlash(lang === 'ur' ? 'براہ کرم آگے بڑھنے سے پہلے ایک جواب منتخب کریں' : 'Please select an option to continue.', 'error');
+    return;
+  }
+
+  if (currentQuestionIndex < currentQuestions.length - 1) {
+    currentQuestionIndex++;
+    renderQuestion();
+  } else {
+    submitScreening();
+  }
+}
+
+function prevQuestion() {
+  if (currentQuestionIndex > 0) {
+    currentQuestionIndex--;
+    renderQuestion();
+  }
+}
+
+async function submitScreening() {
+  const age = document.getElementById('age-group').value;
+  const gen = document.getElementById('gender').value;
+  const lang = getCurrentLang();
+
+  // Show loading indicator
+  const nextBtn = document.getElementById('next-question-btn');
+  nextBtn.disabled = true;
+  nextBtn.textContent = '...';
+
+  try {
+    const data = await Api.screening.result({
+      assessment_type: currentAssessment,
+      answers: answers,
+      age_group: age,
+      gender: gen,
+      language: lang
+    });
+
+    displayResults(data);
+  } catch (err) {
+    showFlash(err.message || 'Submission failed. Please try again.', 'error');
+    nextBtn.disabled = false;
+    nextBtn.textContent = lang === 'ur' ? 'جمع کروائیں' : 'Submit';
+  }
+}
+
+function displayResults(data) {
+  goToStage('results');
+  
+  document.getElementById('result-score').textContent = data.total_score;
+  
+  const badge = document.getElementById('result-severity-badge');
+  badge.textContent = data.severity;
+
+  // Clean old classes
+  badge.className = "severity-badge";
+  const sevKey = data.severity.toLowerCase().replace(/\s+/g, '-');
+  badge.classList.add(`badge-${sevKey}`);
+
+  // Dynamic feedback copy based on severity and language
+  const desc = document.getElementById('result-description');
+  const isUr = getCurrentLang() === 'ur';
+
+  let feedbackText = "";
+  if (data.severity === "Minimal") {
+    feedbackText = isUr 
+      ? "ہمیں یہ جان کر خوشی ہوئی کہ آپ کا ذہنی سکون بحال ہے۔ روزمرہ کی احتیاطی تدابیر اور خود کی دیکھ بھال جاری رکھیں۔"
+      : "Glad to see your scores are in a healthy range. Continue practicing everyday self-care.";
+  } else if (data.severity === "Mild") {
+    feedbackText = isUr
+      ? "آپ کو ہلکی سی پریشانی یا اداسی کا سامنا ہے۔ آپ ہمارے وسائل یا گائیڈڈ ورزشوں سے مدد لے سکتے ہیں۔"
+      : "You seem to be experiencing mild symptoms. Exploring our self-guided resources or breath exercises might help.";
+  } else if (data.severity === "Moderate") {
+    feedbackText = isUr
+      ? "معتدل علامات۔ اگر آپ کو لگتا ہے کہ یہ کیفیت روزمرہ کے معمولات کو متاثر کر رہی ہے، تو کسی ماہر سے بات چیت مددگار ثابت ہو سکتی ہے۔"
+      : "Moderate symptoms. If this is beginning to impact your daily routine, scheduling a conversation with a specialist could be beneficial.";
+  } else { // Moderately Severe or Severe
+    feedbackText = isUr
+      ? "آپ کو گہری علامات کا سامنا ہے۔ ہم پرزور سفارش کرتے ہیں کہ آپ کسی مستند معالج یا ڈاکٹر سے رجوع کریں۔"
+      : "Your symptoms seem to be in a severe range. We highly recommend consulting a certified healthcare professional.";
+  }
+  desc.textContent = feedbackText;
+
+  // Ensemble votes visualization
+  const ensembleBox = document.getElementById('ensemble-details-box');
+  if (data.assessment_type === 'phq9' && data.model_votes) {
+    ensembleBox.classList.remove('d-none');
+    document.getElementById('vote-rf').textContent = data.model_votes.random_forest.prediction;
+    document.getElementById('vote-svm').textContent = data.model_votes.svm.prediction;
+    document.getElementById('vote-xgb').textContent = data.model_votes.xgboost.prediction;
+  } else {
+    ensembleBox.classList.add('d-none');
+  }
+}
+
+function resetScreening() {
+  currentAssessment = null;
+  currentQuestions = [];
+  answers = [];
+  currentQuestionIndex = 0;
+  document.getElementById('consent-check').checked = false;
+  document.getElementById('consent-next-btn').disabled = true;
+  goToStage('select');
+}
+</script>
+
+<style>
+.flow-steps-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+.step-badge {
+  background: rgba(131,151,145,0.15);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.35rem 0.85rem;
+  border-radius: 50px;
+  white-space: nowrap;
+  transition: var(--transition);
+}
+.step-badge.active {
+  background: var(--brand-green);
+  color: var(--brand-cream);
+}
+.step-connector {
+  flex-grow: 1;
+  max-width: 40px;
+  height: 2px;
+  background: rgba(131,151,145,0.25);
+}
+.pathway-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+@media (min-width: 576px) {
+  .pathway-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.consent-info-box {
+  background: rgba(101,88,122,0.06);
+  border-left: 4px solid var(--brand-lavender);
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.92rem;
+  line-height: 1.7;
+}
+html[dir="rtl"] .consent-info-box {
+  border-left: none;
+  border-right: 4px solid var(--brand-lavender);
+}
+.score-display-circle {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--brand-lavender-light), rgba(101,88,122,0.15));
+  border: 3px solid var(--brand-lavender);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  box-shadow: var(--shadow);
+}
+.result-score-value {
+  font-size: 3rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--brand-lavender);
+}
+.result-score-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+.result-desc-box {
+  font-size: 1.05rem;
+  line-height: 1.8;
+  max-width: 600px;
+  margin: 0 auto;
+}
+</style>
+{% endblock %}

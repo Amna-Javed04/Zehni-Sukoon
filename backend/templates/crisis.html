@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block title %}فوری مدد — Crisis Support{% endblock %}
+{% block meta_description %}فوری اور ہنگامی مدد کے وسائل — ہم آپ کے ساتھ ہیں۔{% endblock %}
+
+{% block content %}
+<div class="crisis-page">
+  <div class="glass-card crisis-card fade-in-up">
+    <div class="crisis-icon-wrap mb-3">
+      <i class="fas fa-heartbeat"></i>
+    </div>
+    
+    <h2 class="crisis-title mb-3" data-ur="آپ کا سکون اہم ہے" data-en="Your Safety Matters">آپ کا سکون اہم ہے</h2>
+    
+    <p class="text-muted mb-4" style="font-size: 1.05rem;" data-ur="ہمیں آپ کی فلاح و بہبود کی فکر ہے۔ اگر آپ اس وقت مشکل یا شدید تناؤ میں ہیں اور خود کو نقصان پہنچانے کے خیالات آ رہے ہیں، تو براہ کرم یاد رکھیں کہ آپ اکیلے نہیں ہیں۔ درج ذیل نمبروں پر فوری اور مفت بات کریں۔" data-en="We care about your wellbeing. If you are experiencing overwhelming distress or thoughts of self-harm, please know you are not alone. Reach out to these free, confidential helplines right now.">ہمیں آپ کی فلاح و بہبود کی فکر ہے۔ اگر آپ اس وقت مشکل یا شدید تناؤ میں ہیں اور خود کو نقصان پہنچانے کے خیالات آ رہے ہیں، تو براہ کرم یاد رکھیں کہ آپ اکیلے نہیں ہیں۔ درج ذیل نمبروں پر فوری اور مفت بات کریں۔</p>
+
+    <div class="mb-4">
+      <!-- Umang Helpline -->
+      <a href="tel:03117786264" class="helpline-btn">
+        <i class="fas fa-phone-alt"></i>
+        <span>Umang: 0311-7786264</span>
+      </a>
+      <p class="helpline-desc mb-4" data-ur="پاکستان کی پہلی مفت اور خفیہ ذہنی صحت کی ہیلپ لائن۔" data-en="Pakistan's premier free, professional, and confidential mental health support helpline.">پاکستان کی پہلی مفت اور خفیہ ذہنی صحت کی ہیلپ لائن۔</p>
+
+      <!-- Rescue 1122 -->
+      <a href="tel:1122" class="helpline-btn rescue">
+        <i class="fas fa-ambulance"></i>
+        <span>Rescue: 1122</span>
+      </a>
+      <p class="helpline-desc" data-ur="کسی بھی ہنگامی طبی صورتحال کی صورت میں۔" data-en="For immediate medical emergencies.">کسی بھی ہنگامی طبی صورتحال کی صورت میں۔</p>
+    </div>
+
+    <div class="helpline-verified" data-ur="✓ تمام ہیلپ لائن نمبرز کی تصدیق کی گئی ہے" data-en="✓ All helpline numbers are verified">
+      ✓ تمام ہیلپ لائن نمبرز کی تصدیق کی گئی ہے
+    </div>
+
+    <div class="mt-4 pt-3" style="border-top: 1px solid rgba(131,151,145,0.2);">
+      <a href="{{ url_for('index') }}" class="btn btn-zs-outline" data-ur="ہوم پیج پر واپس جائیں" data-en="Return to Home">ہوم پیج پر واپس جائیں</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.crisis-icon-wrap {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(101,88,122,0.12);
+  color: var(--brand-lavender);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  margin: 0 auto;
+}
+.helpline-desc {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+</style>
+{% endblock %}

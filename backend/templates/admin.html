@@ -1,0 +1,207 @@
+{% extends 'base.html' %}
+{% block title %}ایڈمن ڈیش بورڈ — Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="container section-padding">
+  <!-- Outer wrapper to prevent layout flash before requireAdmin redirects -->
+  <div id="admin-content-wrapper" class="d-none">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+      <div>
+        <h2 class="section-title mb-1" data-ur="انتظامی ڈیش بورڈ (صرف مجموعی اعداد و شمار)" data-en="Admin Dashboard (Aggregate Only)">انتظامی ڈیش بورڈ (صرف مجموعی اعداد و شمار)</h2>
+        <p class="text-muted mb-0" data-ur="پرائیویسی کا مکمل تحفظ — یہاں کسی بھی صارف کا انفرادی ڈیٹا محفوظ نہیں کیا جاتا۔" data-en="Privacy-first approach. Zero individually identifiable data is stored or displayed here.">پرائیویسی کا مکمل تحفظ — یہاں کسی بھی صارف کا انفرادی ڈیٹا محفوظ نہیں کیا جاتا۔</p>
+      </div>
+
+      <!-- Filter control -->
+      <div class="d-flex align-items-center gap-2">
+        <label for="admin-filter" class="mb-0 font-weight-bold" style="font-size:0.9rem;" data-ur="فلٹر کریں:" data-en="Filter Type:">فلٹر کریں:</label>
+        <select id="admin-filter" class="form-control-zs" style="width: auto; padding: 0.4rem 1.5rem;" onchange="loadAdminStats()">
+          <option value="all" data-ur="تمام ٹیسٹ" data-en="All Assessments">تمام ٹیسٹ</option>
+          <option value="phq9" data-ur="PHQ-9 (مزاج)" data-en="PHQ-9 (Mood)">PHQ-9 (مزاج)</option>
+          <option value="gad7" data-ur="GAD-7 (گھبراہٹ)" data-en="GAD-7 (Anxiety)">GAD-7 (گھبراہٹ)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Cards Row -->
+    <div class="admin-cards-grid mb-4">
+      <div class="glass-card stat-card">
+        <div class="stat-value" id="stat-total-screenings">0</div>
+        <div class="stat-label" data-ur="کل جانچ کی تعداد" data-en="Total Check-ins">کل جانچ کی تعداد</div>
+      </div>
+      <div class="glass-card stat-card">
+        <div class="stat-value" id="stat-avg-score">0</div>
+        <div class="stat-label" data-ur="اوسط سکور" data-en="Average Score">اوسط سکور</div>
+      </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="admin-charts-grid">
+      <!-- Chart 1: Severity distribution -->
+      <div class="glass-card p-4">
+        <h4 class="mb-3 text-center" data-ur="شدت کی تقسیم" data-en="Severity Distribution">شدت کی تقسیم</h4>
+        <div class="chart-container">
+          <canvas id="chart-severity"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 2: Demographics (Gender & Age) -->
+      <div class="glass-card p-4">
+        <h4 class="mb-3 text-center" data-ur="جنس اور عمر کی تقسیم" data-en="Demographics Distribution">جنس اور عمر کی تقسیم</h4>
+        <div class="chart-container">
+          <canvas id="chart-gender"></canvas>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let severityChartInstance = null;
+let genderChartInstance = null;
+
+// Route guard on DOM Content Loaded
+document.addEventListener('DOMContentLoaded', () => {
+  if (!requireAdmin()) {
+    // If not admin, the requireAdmin utility immediately redirects to '/'
+    return;
+  }
+  
+  // Show content if verification passed
+  document.getElementById('admin-content-wrapper').classList.remove('d-none');
+  
+  // Initial load
+  loadAdminStats();
+});
+
+async function loadAdminStats() {
+  const filterType = document.getElementById('admin-filter').value;
+  try {
+    const data = await Api.admin.stats(filterType);
+    
+    // Set text metrics
+    document.getElementById('stat-total-screenings').textContent = data.total_screenings;
+    document.getElementById('stat-avg-score').textContent = data.average_score;
+
+    // Render / update charts
+    renderCharts(data);
+  } catch (err) {
+    showFlash(err.message || 'Failed to load stats', 'error');
+  }
+}
+
+function renderCharts(data) {
+  // Chart colors inspired by brand guidelines
+  const brandColors = {
+    green: '#4e635e',
+    greenLight: '#839791',
+    lavender: '#65587a',
+    lavenderLight: '#e0d9eb',
+    dark: '#374744',
+    charcoal: '#1b1c1c'
+  };
+
+  // 1. Severity Distribution Chart
+  const sevLabels = Object.keys(data.severity_distribution);
+  const sevValues = Object.values(data.severity_distribution);
+
+  if (severityChartInstance) severityChartInstance.destroy();
+  
+  const ctxSev = document.getElementById('chart-severity').getContext('2d');
+  severityChartInstance = new Chart(ctxSev, {
+    type: 'bar',
+    data: {
+      labels: sevLabels,
+      datasets: [{
+        label: 'Count',
+        data: sevValues,
+        backgroundColor: [
+          brandColors.greenLight,
+          brandColors.green,
+          brandColors.lavenderLight,
+          brandColors.lavender,
+          brandColors.dark
+        ],
+        borderRadius: 8
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        y: { beginAtZero: true, grid: { color: 'rgba(131,151,145,0.1)' } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+
+  // 2. Gender/Demographics Chart (Doughnut)
+  const genLabels = Object.keys(data.gender_distribution);
+  const genValues = Object.values(data.gender_distribution);
+
+  if (genderChartInstance) genderChartInstance.destroy();
+
+  const ctxGen = document.getElementById('chart-gender').getContext('2d');
+  genderChartInstance = new Chart(ctxGen, {
+    type: 'doughnut',
+    data: {
+      labels: genLabels,
+      datasets: [{
+        data: genValues,
+        backgroundColor: [
+          brandColors.green,
+          brandColors.lavender,
+          brandColors.greenLight
+        ],
+        borderWidth: 2,
+        borderColor: '#fbf9f8'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { boxWidth: 12, padding: 15 }
+        }
+      }
+    }
+  });
+}
+</script>
+
+<style>
+.admin-cards-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+@media (min-width: 576px) {
+  .admin-cards-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.admin-charts-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+}
+@media (min-width: 768px) {
+  .admin-charts-grid {
+    grid-template-columns: 1.1fr 0.9fr;
+  }
+}
+.chart-container {
+  position: relative;
+  height: 250px;
+  width: 100%;
+}
+</style>
+{% endblock %}

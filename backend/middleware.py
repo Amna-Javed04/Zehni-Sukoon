@@ -8,7 +8,7 @@ Usage (import in route files):
 from functools import wraps
 from flask import request, jsonify, current_app, g
 import jwt
-from ..models import User
+from .models import User
 
 
 def _decode_token(token: str):
