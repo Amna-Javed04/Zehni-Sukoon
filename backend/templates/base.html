@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ur" dir="rtl" id="html-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}ذہنی سکون{% endblock %} — Zehni Sukoon</title>
+  <meta name="description" content="{% block meta_description %}ذہنی سکون — اردو میں ذہنی صحت کی جانچ، ہم آپ کے ساتھ ہیں۔{% endblock %}">
+
+  <!-- Google Fonts: Nunito Sans (Latin), Noto Nastaliq Urdu, Noto Naskh Arabic -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@200;300;400;600;700;800;1000&family=Noto+Nastaliq+Urdu:wght@400;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="site-body" id="app-body">
+
+  <!-- ═══════════════════════════════════════════════════════
+       QUICK EXIT BUTTON — Always visible, every screen
+       ═══════════════════════════════════════════════════════ -->
+  <button
+    id="quick-exit-btn"
+    class="quick-exit-btn"
+    onclick="quickExit()"
+    title="Quick Exit — immediately navigate away"
+    aria-label="Quick Exit"
+  >
+    <i class="fas fa-times-circle"></i>
+    <span class="quick-exit-label" data-ur="فوری باہر" data-en="Quick Exit">فوری باہر</span>
+  </button>
+
+  <!-- ═══════════════════════════════════════════════════════
+       GLOBAL HEADER / NAVBAR
+       ═══════════════════════════════════════════════════════ -->
+  <nav class="navbar navbar-zs sticky-top" id="main-navbar" role="navigation" aria-label="Main navigation">
+    <div class="container-fluid px-4">
+
+      <!-- Logo + Wordmark -->
+      <a class="navbar-brand" href="{{ url_for('index') }}" aria-label="Zehni Sukoon Home">
+        <div class="logo-mark" aria-hidden="true">
+          <!-- Leaf curling into crescent SVG mark -->
+          <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="40" height="40" rx="10" fill="#4e635e"/>
+            <!-- Sage green leaf -->
+            <path d="M12 28 C12 28 10 18 18 12 C18 12 26 16 22 24 C22 24 17 26 12 28Z" fill="#839791" opacity="0.9"/>
+            <path d="M12 28 C15 22 20 18 18 12" stroke="#fbf9f8" stroke-width="1" fill="none" opacity="0.6"/>
+            <!-- Lavender crescent -->
+            <path d="M22 10 C29 13 30 22 25 27 C28 24 28 15 22 10Z" fill="#e0d9eb" opacity="0.85"/>
+            <path d="M22 10 C19 12 18 17 20 22 C22 26 26 28 25 27 C21 25 20 18 22 10Z" fill="#65587a" opacity="0.7"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-name-en" data-en="Zehni Sukoon" data-ur="">Zehni Sukoon</span>
+          <span class="brand-name-ur" data-ur="ذہنی سکون" data-en="">ذہنی سکون</span>
+        </div>
+      </a>
+
+      <!-- Tab Navigation (center) -->
+      <ul class="navbar-tabs" id="main-tabs" role="tablist">
+        <li><a href="{{ url_for('index') }}" class="tab-link {% if request.endpoint == 'index' %}active{% endif %}" data-ur="ہوم" data-en="Home" role="tab">ہوم</a></li>
+        <li><a href="{{ url_for('screening') }}" class="tab-link {% if request.endpoint in ['screening','consent','assessment'] %}active{% endif %}" data-ur="جانچ" data-en="Screening" role="tab">جانچ</a></li>
+        <li><a href="{{ url_for('companion') }}" class="tab-link {% if request.endpoint == 'companion' %}active{% endif %}" data-ur="ساتھی" data-en="Companion" role="tab">ساتھی</a></li>
+        <li><a href="{{ url_for('resources') }}" class="tab-link {% if request.endpoint == 'resources' %}active{% endif %}" data-ur="وسائل" data-en="Resources" role="tab">وسائل</a></li>
+        <!-- Admin tab: only rendered if current user is admin (checked client-side from localStorage token) -->
+        <li class="admin-tab-item d-none" id="admin-nav-item">
+          <a href="{{ url_for('admin_dashboard') }}" class="tab-link tab-link-admin" data-ur="ایڈمن" data-en="Admin">ایڈمن</a>
+        </li>
+      </ul>
+
+      <!-- Right-side controls -->
+      <div class="navbar-controls" role="group" aria-label="Accessibility and language controls">
+
+        <!-- Language toggle: Ur ⇄ En -->
+        <button
+          id="lang-toggle-btn"
+          class="ctrl-btn lang-btn"
+          onclick="toggleLanguage()"
+          title="Toggle Language / زبان تبدیل کریں"
+          aria-label="Toggle language"
+        >
+          <span id="lang-btn-label" class="lang-btn-label">EN</span>
+        </button>
+
+        <!-- Text-size toggle -->
+        <button
+          id="text-size-btn"
+          class="ctrl-btn"
+          onclick="cycleTextSize()"
+          title="Text Size / متن کا حجم"
+          aria-label="Change text size"
+        >
+          <span style="font-size:0.75rem;font-weight:700;">A</span><span style="font-size:1rem;font-weight:700;">A</span>
+        </button>
+
+        <!-- Night theme toggle -->
+        <button
+          id="theme-toggle-btn"
+          class="ctrl-btn"
+          onclick="toggleTheme()"
+          title="Night Mode / رات کا موڈ"
+          aria-label="Toggle night mode"
+        >
+          <i class="fas fa-moon" id="theme-icon"></i>
+        </button>
+
+        <!-- Auth state — injected by JS from JWT -->
+        <div class="auth-controls" id="auth-controls">
+          <!-- Logged out state (default) -->
+          <div id="auth-logged-out" class="auth-state">
+            <a href="{{ url_for('login') }}" class="btn btn-zs-outline" id="nav-login-btn" data-ur="لاگ ان" data-en="Login">لاگ ان</a>
+            <a href="{{ url_for('register') }}" class="btn btn-zs-primary" id="nav-register-btn" data-ur="اندراج" data-en="Sign Up">اندراج</a>
+          </div>
+          <!-- Logged in state (shown by JS) -->
+          <div id="auth-logged-in" class="auth-state d-none">
+            <span class="user-badge" id="nav-user-badge"></span>
+            <button class="btn btn-zs-outline" onclick="handleLogout()" id="nav-logout-btn" data-ur="باہر نکلیں" data-en="Logout">باہر نکلیں</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </nav>
+
+  <!-- Flash messages area -->
+  <div class="flash-container" id="flash-container" aria-live="polite"></div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       MAIN CONTENT
+       ═══════════════════════════════════════════════════════ -->
+  <main class="site-main" id="main-content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- ═══════════════════════════════════════════════════════
+       FOOTER
+       ═══════════════════════════════════════════════════════ -->
+  <footer class="site-footer" role="contentinfo">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand-col">
+          <div class="footer-logo-mark" aria-hidden="true">
+            <svg width="32" height="32" viewBox="0 0 40 40" fill="none"><rect width="40" height="40" rx="10" fill="#4e635e"/><path d="M12 28 C12 28 10 18 18 12 C18 12 26 16 22 24 C22 24 17 26 12 28Z" fill="#839791" opacity="0.9"/><path d="M22 10 C29 13 30 22 25 27 C28 24 28 15 22 10Z" fill="#e0d9eb" opacity="0.85"/><path d="M22 10 C19 12 18 17 20 22 C22 26 26 28 25 27 C21 25 20 18 22 10Z" fill="#65587a" opacity="0.7"/></svg>
+          </div>
+          <strong class="footer-brand-name" data-ur="ذہنی سکون" data-en="Zehni Sukoon">ذہنی سکون</strong>
+          <p class="footer-tagline" data-ur="جانچ کا آلہ ہے، علاج نہیں — ہر قدم آپ کے ساتھ۔" data-en="A screening tool, not a diagnosis — every step with you.">جانچ کا آلہ ہے، علاج نہیں — ہر قدم آپ کے ساتھ۔</p>
+        </div>
+        <div class="footer-links-col">
+          <h3 class="footer-heading" data-ur="صفحات" data-en="Pages">صفحات</h3>
+          <ul class="footer-links">
+            <li><a href="{{ url_for('index') }}" data-ur="ہوم" data-en="Home">ہوم</a></li>
+            <li><a href="{{ url_for('screening') }}" data-ur="جانچ" data-en="Screening">جانچ</a></li>
+            <li><a href="{{ url_for('companion') }}" data-ur="ساتھی" data-en="Companion">ساتھی</a></li>
+            <li><a href="{{ url_for('resources') }}" data-ur="وسائل" data-en="Resources">وسائل</a></li>
+          </ul>
+        </div>
+        <div class="footer-crisis-col">
+          <h3 class="footer-heading" data-ur="فوری مدد" data-en="Crisis Help">فوری مدد</h3>
+          <a href="tel:03117786264" class="footer-helpline-link">
+            <i class="fas fa-phone-alt"></i>
+            <span>Umang: 0311-7786264</span>
+          </a>
+          <a href="tel:1122" class="footer-helpline-link">
+            <i class="fas fa-ambulance"></i>
+            <span>Rescue: 1122</span>
+          </a>
+          <p class="footer-crisis-note" data-ur="اگر آپ بحران میں ہیں تو براہ کرم رابطہ کریں۔" data-en="If you are in crisis, please reach out.">اگر آپ بحران میں ہیں تو براہ کرم رابطہ کریں۔</p>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© <span id="footer-year"></span> Zehni Sukoon</span>
+        <span class="footer-disclaimer" data-ur="یہ جانچ کا آلہ ہے، طبی تشخیص نہیں۔" data-en="Screening tool only — not a medical diagnosis.">یہ جانچ کا آلہ ہے، طبی تشخیص نہیں۔</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- Core app scripts -->
+  <script src="{{ url_for('static', filename='js/api.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/auth-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+
+  {% block scripts %}{% endblock %}
+
+  <script>
+    // Footer year
+    document.getElementById('footer-year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>

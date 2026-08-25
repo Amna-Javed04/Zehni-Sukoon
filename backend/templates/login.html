@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+{% block title %}لاگ ان{% endblock %}
+{% block meta_description %}ذہنی سکون میں داخل ہوں — Login or continue as guest{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+  <div class="glass-card auth-card">
+    <!-- Tabs: Login / Sign Up -->
+    <div style="display:flex;gap:0;margin-bottom:1.5rem;border-bottom:2px solid rgba(131,151,145,0.2)">
+      <button id="tab-login" class="auth-tab-btn active" onclick="switchTab('login')"
+        data-ur="لاگ ان" data-en="Login">لاگ ان</button>
+      <button id="tab-signup" class="auth-tab-btn" onclick="switchTab('signup')"
+        data-ur="اندراج" data-en="Sign Up">اندراج</button>
+    </div>
+
+    <!-- Login form -->
+    <form id="login-form" onsubmit="submitLogin(event)" novalidate>
+      <div class="mb-3">
+        <label class="form-label-zs" data-ur="ای میل" data-en="Email">ای میل</label>
+        <input type="email" id="login-email" class="form-control-zs"
+          data-ph-ur="آپ کا ای میل" data-ph-en="Your email" required autocomplete="username">
+      </div>
+      <div class="mb-3">
+        <label class="form-label-zs" data-ur="پاس ورڈ" data-en="Password">پاس ورڈ</label>
+        <input type="password" id="login-password" class="form-control-zs"
+          data-ph-ur="پاس ورڈ درج کریں" data-ph-en="Enter password" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn-zs-primary btn-zs-lg" style="width:100%" id="login-submit-btn"
+        data-ur="داخل ہوں" data-en="Login">داخل ہوں</button>
+    </form>
+
+    <!-- Sign Up form -->
+    <form id="signup-form" onsubmit="submitSignup(event)" novalidate class="d-none">
+      <div class="mb-3">
+        <label class="form-label-zs" data-ur="ای میل" data-en="Email">ای میل</label>
+        <input type="email" id="signup-email" class="form-control-zs"
+          data-ph-ur="آپ کا ای میل" data-ph-en="Your email" required autocomplete="email">
+      </div>
+      <div class="mb-3">
+        <label class="form-label-zs" data-ur="پاس ورڈ" data-en="Password">پاس ورڈ</label>
+        <input type="password" id="signup-password" class="form-control-zs"
+          data-ph-ur="کم از کم ۸ حروف" data-ph-en="Min 8 characters" required autocomplete="new-password">
+      </div>
+      <button type="submit" class="btn-zs-primary btn-zs-lg" style="width:100%" id="signup-submit-btn"
+        data-ur="اکاؤنٹ بنائیں" data-en="Create Account">اکاؤنٹ بنائیں</button>
+    </form>
+
+    <div class="auth-divider">
+      <span data-ur="یا" data-en="or">یا</span>
+    </div>
+
+    <!-- Guest access -->
+    <button class="auth-guest-btn" onclick="continueAsGuest()"
+      data-ur="بطور مہمان جاری رکھیں — کوئی اکاؤنٹ نہیں" data-en="Continue as Guest — no account needed">
+      بطور مہمان جاری رکھیں — کوئی اکاؤنٹ نہیں
+    </button>
+
+    <p class="auth-privacy-note" data-ur="مہمان کے طور پر کوئی ذاتی معلومات محفوظ نہیں کی جاتی۔"
+       data-en="No personal information is stored for guest sessions.">
+      مہمان کے طور پر کوئی ذاتی معلومات محفوظ نہیں کی جاتی۔
+    </p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function switchTab(tab) {
+  const loginForm  = document.getElementById('login-form');
+  const signupForm = document.getElementById('signup-form');
+  const tabLogin   = document.getElementById('tab-login');
+  const tabSignup  = document.getElementById('tab-signup');
+
+  if (tab === 'login') {
+    loginForm.classList.remove('d-none');
+    signupForm.classList.add('d-none');
+    tabLogin.classList.add('active');
+    tabSignup.classList.remove('active');
+  } else {
+    loginForm.classList.add('d-none');
+    signupForm.classList.remove('d-none');
+    tabLogin.classList.remove('active');
+    tabSignup.classList.add('active');
+  }
+}
+
+async function submitLogin(e) {
+  e.preventDefault();
+  const btn   = document.getElementById('login-submit-btn');
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-password').value;
+
+  btn.disabled = true;
+  btn.textContent = '...';
+  try {
+    const user = await handleLogin(email, pass);
+    // Role-based redirect: admin → /admin, user → /
+    window.location.href = user.is_admin ? '/admin' : '/';
+  } catch (err) {
+    showFlash(err.message || 'Login failed', 'error');
+    btn.disabled = false;
+    const lang = getCurrentLang();
+    btn.setAttribute('data-ur', 'داخل ہوں');
+    btn.setAttribute('data-en', 'Login');
+    btn.textContent = lang === 'ur' ? 'داخل ہوں' : 'Login';
+  }
+}
+
+async function submitSignup(e) {
+  e.preventDefault();
+  const btn   = document.getElementById('signup-submit-btn');
+  const email = document.getElementById('signup-email').value.trim();
+  const pass  = document.getElementById('signup-password').value;
+
+  if (pass.length < 8) {
+    const lang = getCurrentLang();
+    showFlash(lang === 'ur' ? 'پاس ورڈ کم از کم ۸ حروف ہونا چاہیے' : 'Password must be at least 8 characters', 'error');
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = '...';
+  try {
+    await handleSignup(email, pass);
+    window.location.href = '/';
+  } catch (err) {
+    showFlash(err.message || 'Signup failed', 'error');
+    btn.disabled = false;
+    const lang = getCurrentLang();
+    btn.textContent = lang === 'ur' ? 'اکاؤنٹ بنائیں' : 'Create Account';
+  }
+}
+
+async function continueAsGuest() {
+  try {
+    await handleGuestSession();
+    window.location.href = '/screening';
+  } catch (err) {
+    showFlash(err.message || 'Could not start guest session', 'error');
+  }
+}
+</script>
+
+<style>
+.auth-tab-btn {
+  flex:1; background:transparent; border:none; border-bottom:3px solid transparent;
+  padding:.75rem 1rem; font-weight:700; font-size:1rem; cursor:pointer;
+  color:var(--text-muted); transition:var(--transition);
+  font-family:var(--font-ur-body);
+}
+html[dir="ltr"] .auth-tab-btn { font-family:var(--font-latin); }
+.auth-tab-btn.active { color:var(--brand-green-dark); border-bottom-color:var(--brand-green); }
+.form-label-zs { display:block; font-weight:600; margin-bottom:.35rem; font-size:.9rem; }
+.auth-divider {
+  text-align:center; color:var(--text-muted); font-size:.82rem;
+  margin:1rem 0; position:relative;
+}
+.auth-divider::before,.auth-divider::after {
+  content:''; position:absolute; top:50%; width:42%; height:1px;
+  background:rgba(131,151,145,.25);
+}
+.auth-divider::before { left:0; } .auth-divider::after { right:0; }
+.auth-privacy-note {
+  text-align:center; font-size:.78rem; color:var(--text-muted);
+  margin-top:.75rem; line-height:1.5;
+}
+</style>
+{% endblock %}
