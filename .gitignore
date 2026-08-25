@@ -1,5 +1,10 @@
 node_modules/
 .env
+!.env.example
 __pycache__/
 venv/
 *.pyc
+*.pkl
+*.egg-info/
+dist/
+build/
