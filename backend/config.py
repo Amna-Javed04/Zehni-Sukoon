@@ -29,6 +29,11 @@ class Config:
     # Guest session expiry (hours)
     GUEST_SESSION_EXPIRY_HOURS = int(os.environ.get('GUEST_SESSION_EXPIRY_HOURS', 24))
 
+    # DashScope / Qwen
+    DASHSCOPE_API_KEY = os.environ.get('DASHSCOPE_API_KEY', '')
+    DASHSCOPE_BASE_URL = os.environ.get('DASHSCOPE_BASE_URL', 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1')
+    QWEN_MODEL = os.environ.get('QWEN_MODEL', 'qwen-plus')
+
 
 class DevelopmentConfig(Config):
     DEBUG = True

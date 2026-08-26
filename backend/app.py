@@ -33,9 +33,11 @@ def create_app(env: str = None) -> Flask:
     from .routes.auth import auth_bp
     from .routes.screening import screening_bp
     from .routes.admin import admin_bp
+    from .routes.chat import chat_bp
     app.register_blueprint(auth_bp)
     app.register_blueprint(screening_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(chat_bp)
 
     # --- Page Routes (serve templates) ---
     @app.route('/')

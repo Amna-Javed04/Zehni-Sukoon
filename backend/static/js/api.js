@@ -54,8 +54,8 @@ const Api = {
       apiFetch('/screening/start', { method: 'POST', body: JSON.stringify(payload) }),
     answer: (payload) =>
       apiFetch('/screening/answer', { method: 'POST', body: JSON.stringify(payload) }),
-    result: (screeningId) =>
-      apiFetch('/screening/result', { method: 'POST', body: JSON.stringify({ screening_id: screeningId }) }),
+    result: (payload) =>
+      apiFetch('/screening/result', { method: 'POST', body: JSON.stringify(payload) }),
   },
   chat: {
     extractScore: (payload) =>

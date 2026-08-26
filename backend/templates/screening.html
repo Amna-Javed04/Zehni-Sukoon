@@ -18,8 +18,10 @@
   </div>
 
   <!-- ═══════════════════════════════════════════════════════
-       STAGE 1: SELECT ASSESSMENT
+       STAGE 1: SELECT ASSESSMENT & MODE
        ═══════════════════════════════════════════════════════ -->
+  
+  <!-- Step 1a: Select Assessment Type -->
   <div id="stage-select" class="glass-card p-5 fade-in-up">
     <h2 class="text-center mb-3" data-ur="اپنے جذبات کی جانچ کریں" data-en="Check-in With Yourself">اپنے جذبات کی جانچ کریں</h2>
     <p class="text-center text-muted mb-4" data-ur="براہ کرم ان دو میں سے کسی ایک کا انتخاب کریں" data-en="Please select one of the screening options below">براہ کرم ان دو میں سے کسی ایک کا انتخاب کریں</p>
@@ -41,6 +43,31 @@
     </div>
   </div>
 
+  <!-- Step 1b: Select Mode (Conversational vs Form) -->
+  <div id="stage-mode" class="glass-card p-5 fade-in-up d-none">
+    <h2 class="text-center mb-3" data-ur="طریقہ کار کا انتخاب کریں" data-en="Choose Screening Mode">طریقہ کار کا انتخاب کریں</h2>
+    <p class="text-center text-muted mb-4" data-ur="آپ اسکریننگ کے لیے درج ذیل میں سے کس طریقہ کار کو ترجیح دیں گے؟" data-en="How would you like to take this assessment?">آپ اسکریننگ کے لیے درج ذیل میں سے کس طریقہ کار کو ترجیح دیں گے؟</p>
+    
+    <div class="pathway-grid">
+      <!-- Conversational Chat Card -->
+      <div class="glass-card pathway-card" onclick="selectMode('chat')">
+        <div class="pathway-icon"><i class="fas fa-comments"></i></div>
+        <h3 data-ur="مکالماتی گفتگو (Chat Mode)" data-en="Conversational Chat (Chat Mode)">مکالماتی گفتگو (Chat Mode)</h3>
+        <p class="text-muted" style="font-size:0.9rem;" data-ur="ہمارے ہمدرد معاون سے بات کریں جو آپ کے جوابات سے سکور اخذ کرے گا۔" data-en="Speak naturally to our AI assistant, who will understand and score your replies.">ہمارے ہمدرد معاون سے بات کریں جو آپ کے جوابات سے سکور اخذ کرے گا۔</p>
+      </div>
+
+      <!-- Standard Form Card -->
+      <div class="glass-card pathway-card" onclick="selectMode('form')">
+        <div class="pathway-icon"><i class="fas fa-list-alt"></i></div>
+        <h3 data-ur="فارم موڈ (Form Mode)" data-en="Standard Form (Form Mode)">فارم موڈ (Form Mode)</h3>
+        <p class="text-muted" style="font-size:0.9rem;" data-ur="ہر سوال کے لیے روایتی 0 سے 3 کے اختیارات میں سے براہِ راست انتخاب کریں۔" data-en="Directly choose scores from 0 to 3 for each question.">ہر سوال کے لیے روایتی 0 سے 3 کے اختیارات میں سے براہِ راست انتخاب کریں۔</p>
+      </div>
+    </div>
+    <div class="d-flex justify-content-start mt-4">
+      <button class="btn btn-zs-outline" onclick="goToStage('select')" data-ur="واپس" data-en="Back">واپس</button>
+    </div>
+  </div>
+
   <!-- ═══════════════════════════════════════════════════════
        STAGE 2: CONSENT
        ═══════════════════════════════════════════════════════ -->
@@ -58,7 +85,7 @@
     </div>
 
     <div class="d-flex gap-3 mt-4 justify-content-end">
-      <button class="btn btn-zs-outline" onclick="goToStage('select')" data-ur="واپس" data-en="Back">واپس</button>
+      <button class="btn btn-zs-outline" onclick="goToStage('mode')" data-ur="واپس" data-en="Back">واپس</button>
       <button id="consent-next-btn" class="btn btn-zs-primary" disabled onclick="goToStage('details')" data-ur="جاری رکھیں" data-en="Continue">جاری رکھیں</button>
     </div>
   </div>
@@ -97,7 +124,7 @@
   </div>
 
   <!-- ═══════════════════════════════════════════════════════
-       STAGE 4: SCREENING FORM
+       STAGE 4A: STANDARD FORM SCREENING
        ═══════════════════════════════════════════════════════ -->
   <div id="stage-questions" class="glass-card p-5 fade-in-up d-none">
     <div class="progress-bar-wrap">
@@ -112,6 +139,32 @@
       <button id="prev-question-btn" class="btn btn-zs-outline" onclick="prevQuestion()" data-ur="پیچھے" data-en="Previous">پیچھے</button>
       <button id="next-question-btn" class="btn btn-zs-primary" onclick="nextQuestion()" data-ur="اگلا" data-en="Next">اگلا</button>
     </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       STAGE 4B: CONVERSATIONAL CHAT SCREENING
+       ═══════════════════════════════════════════════════════ -->
+  <div id="stage-chat" class="glass-card p-4 fade-in-up d-none">
+    <div class="chat-header mb-3 text-center">
+      <h4 class="mb-1" data-ur="ہمدم معاون جانچ" data-en="Humdum Screening Intake">ہمدم معاون جانچ</h4>
+      <p class="text-muted mb-0" style="font-size:0.85rem;" data-ur="اپنے جذبات کا اپنے الفاظ میں کھل کر اظہار کریں۔" data-en="Express your feelings freely in your own words.">اپنے جذبات کا اپنے الفاظ میں کھل کر اظہار کریں۔</p>
+    </div>
+
+    <div class="progress-bar-wrap mb-3">
+      <div id="chat-progress" class="progress-bar-fill" style="width: 0%;"></div>
+    </div>
+
+    <div class="chat-window mb-3" id="screening-chat-window" style="height: 380px;">
+      <!-- Conversation history goes here -->
+    </div>
+
+    <form id="screening-chat-form" class="chat-input-row" onsubmit="sendScreeningChatMessage(event)">
+      <input type="text" id="screening-chat-input" class="chat-input" 
+        placeholder="یہاں جواب لکھیں..." data-ph-ur="یہاں جواب لکھیں..." data-ph-en="Type your reply here..." required autocomplete="off">
+      <button type="submit" class="btn-zs-primary" id="screening-chat-send-btn">
+        <i class="fas fa-paper-plane"></i>
+      </button>
+    </form>
   </div>
 
   <!-- ═══════════════════════════════════════════════════════
@@ -201,33 +254,46 @@ const OPTION_LABELS = {
 };
 
 let currentAssessment = null;
+let currentAssessmentMode = null;
 let currentQuestions = [];
 let answers = [];
 let currentQuestionIndex = 0;
+
+// Conversational mode specific state
+let chatQuestionIndex = 0;
+let isWaitingForClarification = false;
 
 function selectAssessment(type) {
   currentAssessment = type;
   currentQuestions = type === 'phq9' ? PHQ9_QUESTIONS : GAD7_QUESTIONS;
   answers = new Array(currentQuestions.length).fill(null);
+  goToStage('mode');
+}
+
+function selectMode(mode) {
+  currentAssessmentMode = mode;
   goToStage('consent');
 }
 
 function goToStage(stageId) {
   // Hide all stages
-  ['select', 'consent', 'details', 'questions', 'results'].forEach(id => {
-    document.getElementById(`stage-${id}`).classList.add('d-none');
+  ['select', 'mode', 'consent', 'details', 'questions', 'chat', 'results'].forEach(id => {
+    const el = document.getElementById(`stage-${id}`);
+    if (el) el.classList.add('d-none');
   });
 
   // Show active stage
-  document.getElementById(`stage-${stageId}`).classList.remove('d-none');
+  const activeEl = document.getElementById(`stage-${stageId}`);
+  if (activeEl) activeEl.classList.remove('d-none');
 
   // Update step badges
   document.querySelectorAll('.step-badge').forEach(b => b.classList.remove('active'));
   
   let activeBadgeIndex = 1;
-  if (stageId === 'consent') activeBadgeIndex = 2;
+  if (stageId === 'mode') activeBadgeIndex = 1;
+  else if (stageId === 'consent') activeBadgeIndex = 2;
   else if (stageId === 'details') activeBadgeIndex = 3;
-  else if (stageId === 'questions') activeBadgeIndex = 4;
+  else if (stageId === 'questions' || stageId === 'chat') activeBadgeIndex = 4;
   else if (stageId === 'results') activeBadgeIndex = 5;
 
   const activeBadge = document.getElementById(`step-badge-${activeBadgeIndex}`);
@@ -240,11 +306,30 @@ function toggleConsentBtn() {
 }
 
 function startQuestions() {
-  currentQuestionIndex = 0;
-  goToStage('questions');
-  renderQuestion();
+  if (currentAssessmentMode === 'form') {
+    currentQuestionIndex = 0;
+    goToStage('questions');
+    renderQuestion();
+  } else {
+    chatQuestionIndex = 0;
+    isWaitingForClarification = false;
+    goToStage('chat');
+    document.getElementById('screening-chat-window').innerHTML = '';
+    
+    // Welcome greeting
+    const isUr = getCurrentLang() === 'ur';
+    const welcomeText = isUr 
+      ? "خوش آمدید! ہم یہ اسکریننگ گفتگو کے ذریعے کریں گے۔ میں آپ سے کچھ سوال پوچھوں گا، آپ اپنے جذبات کا کھل کر اظہار کریں۔"
+      : "Welcome! We will conduct this screening through chat. I will ask you a few questions, feel free to reply in your own words.";
+    appendChatBubble('bot', welcomeText);
+    
+    setTimeout(askNextChatQuestion, 800);
+  }
 }
 
+// ────────────────────────────────────────────────────────
+// Standard Form Mode Rendering
+// ────────────────────────────────────────────────────────
 function renderQuestion() {
   const lang = getCurrentLang();
   const q = currentQuestions[currentQuestionIndex];
@@ -288,12 +373,10 @@ function renderQuestion() {
 }
 
 function setAnswer(val) {
-  // If PHQ-9 Q9 (suicide risk) is selected with a score > 0, redirect to crisis screen immediately
   if (currentAssessment === 'phq9' && currentQuestionIndex === 8 && val > 0) {
     window.location.href = '/crisis';
     return;
   }
-
   answers[currentQuestionIndex] = val;
 }
 
@@ -319,15 +402,124 @@ function prevQuestion() {
   }
 }
 
+// ────────────────────────────────────────────────────────
+// Conversational Chat Mode
+// ────────────────────────────────────────────────────────
+function appendChatBubble(sender, text) {
+  const win = document.getElementById('screening-chat-window');
+  const bubble = document.createElement('div');
+  bubble.className = `chat-bubble ${sender} fade-in-up`;
+  bubble.textContent = text;
+  win.appendChild(bubble);
+  win.scrollTop = win.scrollHeight;
+}
+
+function askNextChatQuestion() {
+  const pct = (chatQuestionIndex / currentQuestions.length) * 100;
+  document.getElementById('chat-progress').style.width = `${pct}%`;
+
+  if (chatQuestionIndex >= currentQuestions.length) {
+    // All questions answered, submit
+    submitScreening();
+    return;
+  }
+
+  const q = currentQuestions[chatQuestionIndex];
+  const isUr = getCurrentLang() === 'ur';
+  const qNum = chatQuestionIndex + 1;
+  
+  const questionPrompt = isUr
+    ? `سوال ${qNum}: ${q.ur}`
+    : `Question ${qNum}: ${q.en}`;
+    
+  appendChatBubble('bot', questionPrompt);
+}
+
+async function sendScreeningChatMessage(e) {
+  e.preventDefault();
+  const input = document.getElementById('screening-chat-input');
+  const btn = document.getElementById('screening-chat-send-btn');
+  const reply = input.value.trim();
+  const isUr = getCurrentLang() === 'ur';
+
+  if (!reply) return;
+
+  // Add user reply to window
+  appendChatBubble('user', reply);
+  input.value = '';
+  
+  // Lock controls
+  input.disabled = true;
+  btn.disabled = true;
+
+  // Show processing bubble
+  appendChatBubble('bot', '...');
+  const win = document.getElementById('screening-chat-window');
+  const loaderBubble = win.lastChild;
+
+  const currentQ = currentQuestions[chatQuestionIndex];
+  const questionText = isUr ? currentQ.ur : currentQ.en;
+
+  try {
+    const data = await Api.chat.extractScore({
+      assessment_type: currentAssessment,
+      question: questionText,
+      reply: reply
+    });
+
+    // Remove loader
+    win.removeChild(loaderBubble);
+
+    const score = data.score;
+    const needsClarification = data.needs_clarification;
+
+    // Strict self-harm Question 9 handling
+    if (currentAssessment === 'phq9' && chatQuestionIndex === 8) {
+      // If score is > 0 OR if it's ambiguous (needs_clarification is true / score is null)
+      if (score > 0 || score === null || needsClarification) {
+        window.location.href = '/crisis';
+        return;
+      }
+    }
+
+    if (needsClarification) {
+      const followUp = isUr
+        ? "براہ کرم وضاحت کریں کہ یہ کیفیت کتنی کثرت سے ہوتی ہے (مثلاً: بالکل نہیں، کبھی کبھی، آدھے سے زیادہ دن، یا روزانہ)؟"
+        : "Could you clarify how often this happens? (e.g., not at all, sometimes, more than half the days, or nearly every day)";
+      appendChatBubble('bot', followUp);
+    } else {
+      answers[chatQuestionIndex] = score;
+      chatQuestionIndex++;
+      setTimeout(askNextChatQuestion, 800);
+    }
+
+  } catch (err) {
+    win.removeChild(loaderBubble);
+    showFlash(err.message || 'Error understanding response. Please try again.', 'error');
+  } finally {
+    input.disabled = false;
+    btn.disabled = false;
+    input.focus();
+  }
+}
+
+// ────────────────────────────────────────────────────────
+// Submission and Results
+// ────────────────────────────────────────────────────────
 async function submitScreening() {
   const age = document.getElementById('age-group').value;
   const gen = document.getElementById('gender').value;
   const lang = getCurrentLang();
 
-  // Show loading indicator
-  const nextBtn = document.getElementById('next-question-btn');
-  nextBtn.disabled = true;
-  nextBtn.textContent = '...';
+  // If in standard form mode, disable next button
+  if (currentAssessmentMode === 'form') {
+    const nextBtn = document.getElementById('next-question-btn');
+    nextBtn.disabled = true;
+    nextBtn.textContent = '...';
+  } else {
+    // Show submitting overlay or toast
+    appendChatBubble('bot', lang === 'ur' ? 'نتائج حاصل کیے جا رہے ہیں...' : 'Analyzing responses...');
+  }
 
   try {
     const data = await Api.screening.result({
@@ -341,8 +533,11 @@ async function submitScreening() {
     displayResults(data);
   } catch (err) {
     showFlash(err.message || 'Submission failed. Please try again.', 'error');
-    nextBtn.disabled = false;
-    nextBtn.textContent = lang === 'ur' ? 'جمع کروائیں' : 'Submit';
+    if (currentAssessmentMode === 'form') {
+      const nextBtn = document.getElementById('next-question-btn');
+      nextBtn.disabled = false;
+      nextBtn.textContent = lang === 'ur' ? 'جمع کروائیں' : 'Submit';
+    }
   }
 }
 
@@ -397,9 +592,12 @@ function displayResults(data) {
 
 function resetScreening() {
   currentAssessment = null;
+  currentAssessmentMode = null;
   currentQuestions = [];
   answers = [];
   currentQuestionIndex = 0;
+  chatQuestionIndex = 0;
+  isWaitingForClarification = false;
   document.getElementById('consent-check').checked = false;
   document.getElementById('consent-next-btn').disabled = true;
   goToStage('select');
