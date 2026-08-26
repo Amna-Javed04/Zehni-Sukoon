@@ -13,11 +13,14 @@
     <button class="resource-tab-btn" onclick="filterCategory('cbt')" data-ur="نفسیاتی طریقے (CBT)" data-en="CBT Practices">نفسیاتی طریقے (CBT)</button>
     <button class="resource-tab-btn" onclick="filterCategory('grounding')" data-ur="پرسکون ہونے کے طریقے" data-en="Grounding Exercises">پرسکون ہونے کے طریقے</button>
     <button class="resource-tab-btn" onclick="filterCategory('sleep')" data-ur="بہتر نیند کے طریقے" data-en="Sleep Hygiene">بہتر نیند کے طریقے</button>
+    <button class="resource-tab-btn" onclick="filterCategory('crisis')" data-ur="ہنگامی مدد (Crisis)" data-en="Crisis Support">ہنگامی مدد (Crisis)</button>
   </div>
 
   <div class="row g-4 mt-2" id="resources-container">
     <!-- Resources will be dynamically populated/filtered here -->
   </div>
+  
+  <p class="text-center text-muted mt-4" style="font-size:0.8rem;" data-ur="ہیلپ لائن نمبرز کی آخری تصدیق: اگست ۲۰۲۶" data-en="Helpline numbers last verified: August 2026">Helpline numbers last verified: August 2026</p>
 </div>
 {% endblock %}
 
@@ -77,6 +80,33 @@ const RESOURCES_DATA = [
       en: "Write down your lingering thoughts, fears, or to-do lists before sleeping to clear mental clutter."
     },
     icon: "fa-brain"
+  },
+  {
+    category: "crisis",
+    title: { ur: "امنگ ہیلپ لائن (Umang Helpline)", en: "Umang Helpline" },
+    desc: {
+      ur: "ذہنی صحت کی مدد کے لیے مفت اور خفیہ رابطہ: 0311-7786264 پر کال کریں۔",
+      en: "Free, confidential, and professional mental health support. Call: 0311-7786264."
+    },
+    icon: "fa-phone-alt"
+  },
+  {
+    category: "crisis",
+    title: { ur: "قومی یوتھ ہیلپ لائن (National Youth Helpline)", en: "National Youth Helpline" },
+    desc: {
+      ur: "نوجوانوں کے لیے خفیہ مشاورت اور رہنمائی: 0800-69457 پر کال کریں۔",
+      en: "Confidential counseling, guidance, and support for youth. Call: 0800-69457."
+    },
+    icon: "fa-info-circle"
+  },
+  {
+    category: "crisis",
+    title: { ur: "ریسکیو سروس (Rescue 1122)", en: "Rescue 1122" },
+    desc: {
+      ur: "فوری اور ہنگامی طبی صورتحال کی صورت میں: 1122 پر کال کریں۔",
+      en: "For immediate medical emergencies. Call: 1122."
+    },
+    icon: "fa-ambulance"
   }
 ];
 
