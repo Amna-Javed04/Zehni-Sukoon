@@ -33,6 +33,22 @@
         <div class="stat-value" id="stat-avg-score">0</div>
         <div class="stat-label" data-ur="اوسط سکور" data-en="Average Score">اوسط سکور</div>
       </div>
+      <div class="glass-card stat-card">
+        <div class="stat-value" id="stat-lang-ur">0</div>
+        <div class="stat-label" data-ur="اردو جوابات" data-en="Urdu Responses">اردو جوابات</div>
+      </div>
+      <div class="glass-card stat-card">
+        <div class="stat-value" id="stat-lang-en">0</div>
+        <div class="stat-label" data-ur="انگریزی جوابات" data-en="English Responses">انگریزی جوابات</div>
+      </div>
+    </div>
+
+    <!-- 7-Day Trend (Full Width) -->
+    <div class="glass-card p-4 mb-4">
+      <h4 class="mb-3 text-center" data-ur="گذشتہ ۷ دنوں کا رجحان (روزانہ چیک ان)" data-en="7-Day Check-in Trend (Daily Volume)">گذشتہ ۷ دنوں کا رجحان (روزانہ چیک ان)</h4>
+      <div class="chart-container-trend">
+        <canvas id="chart-trend"></canvas>
+      </div>
     </div>
 
     <!-- Charts Row -->
@@ -45,9 +61,17 @@
         </div>
       </div>
 
-      <!-- Chart 2: Demographics (Gender & Age) -->
+      <!-- Chart 2: Age Demographics -->
       <div class="glass-card p-4">
-        <h4 class="mb-3 text-center" data-ur="جنس اور عمر کی تقسیم" data-en="Demographics Distribution">جنس اور عمر کی تقسیم</h4>
+        <h4 class="mb-3 text-center" data-ur="عمر کی تقسیم" data-en="Age Group Distribution">عمر کی تقسیم</h4>
+        <div class="chart-container">
+          <canvas id="chart-age"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 3: Gender Distribution -->
+      <div class="glass-card p-4 col-md-12">
+        <h4 class="mb-3 text-center" data-ur="جنس کی تقسیم" data-en="Gender Distribution">جنس کی تقسیم</h4>
         <div class="chart-container">
           <canvas id="chart-gender"></canvas>
         </div>
@@ -60,7 +84,9 @@
 
 {% block scripts %}
 <script>
+let trendChartInstance = null;
 let severityChartInstance = null;
+let ageChartInstance = null;
 let genderChartInstance = null;
 
 // Route guard on DOM Content Loaded
@@ -85,6 +111,10 @@ async function loadAdminStats() {
     // Set text metrics
     document.getElementById('stat-total-screenings').textContent = data.total_screenings;
     document.getElementById('stat-avg-score').textContent = data.average_score;
+    
+    // Language counters
+    document.getElementById('stat-lang-ur').textContent = data.language_distribution.ur || 0;
+    document.getElementById('stat-lang-en').textContent = data.language_distribution.en || 0;
 
     // Render / update charts
     renderCharts(data);
@@ -101,15 +131,58 @@ function renderCharts(data) {
     lavender: '#65587a',
     lavenderLight: '#e0d9eb',
     dark: '#374744',
-    charcoal: '#1b1c1c'
+    charcoal: '#1b1c1c',
+    creamDark: '#f1edeb'
   };
 
-  // 1. Severity Distribution Chart
+  // 1. 7-Day Check-in Trend Line Chart
+  const trendLabels = data.trend_7day.map(t => {
+    // Convert date string to a simple format MM/DD
+    const parts = t.date.split('-');
+    return parts.length === 3 ? `${parts[1]}/${parts[2]}` : t.date;
+  });
+  const trendValues = data.trend_7day.map(t => t.count);
+
+  if (trendChartInstance) trendChartInstance.destroy();
+  const ctxTrend = document.getElementById('chart-trend').getContext('2d');
+  trendChartInstance = new Chart(ctxTrend, {
+    type: 'line',
+    data: {
+      labels: trendLabels,
+      datasets: [{
+        label: getCurrentLang() === 'ur' ? 'چیک ان تعداد' : 'Check-ins',
+        data: trendValues,
+        borderColor: brandColors.lavender,
+        backgroundColor: 'rgba(101, 88, 122, 0.15)',
+        borderWidth: 3,
+        fill: true,
+        tension: 0.3,
+        pointBackgroundColor: brandColors.lavender,
+        pointRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        y: { 
+          beginAtZero: true, 
+          ticks: { stepSize: 1 },
+          grid: { color: 'rgba(131,151,145,0.1)' } 
+        },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+
+  // 2. Severity Distribution Bar Chart
   const sevLabels = Object.keys(data.severity_distribution);
   const sevValues = Object.values(data.severity_distribution);
 
   if (severityChartInstance) severityChartInstance.destroy();
-  
   const ctxSev = document.getElementById('chart-severity').getContext('2d');
   severityChartInstance = new Chart(ctxSev, {
     type: 'bar',
@@ -141,12 +214,46 @@ function renderCharts(data) {
     }
   });
 
-  // 2. Gender/Demographics Chart (Doughnut)
+  // 3. Age Demographics Pie/Doughnut Chart
+  const ageLabels = Object.keys(data.age_distribution);
+  const ageValues = Object.values(data.age_distribution);
+
+  if (ageChartInstance) ageChartInstance.destroy();
+  const ctxAge = document.getElementById('chart-age').getContext('2d');
+  ageChartInstance = new Chart(ctxAge, {
+    type: 'pie',
+    data: {
+      labels: ageLabels,
+      datasets: [{
+        data: ageValues,
+        backgroundColor: [
+          brandColors.green,
+          brandColors.lavender,
+          brandColors.greenLight,
+          brandColors.lavenderLight,
+          brandColors.dark
+        ],
+        borderWidth: 2,
+        borderColor: '#fbf9f8'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { boxWidth: 12, padding: 15 }
+        }
+      }
+    }
+  });
+
+  // 4. Gender Distribution Chart (Doughnut)
   const genLabels = Object.keys(data.gender_distribution);
   const genValues = Object.values(data.gender_distribution);
 
   if (genderChartInstance) genderChartInstance.destroy();
-
   const ctxGen = document.getElementById('chart-gender').getContext('2d');
   genderChartInstance = new Chart(ctxGen, {
     type: 'doughnut',
@@ -185,9 +292,15 @@ function renderCharts(data) {
 }
 @media (min-width: 576px) {
   .admin-cards-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, 1fr);
   }
 }
+@media (min-width: 992px) {
+  .admin-cards-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
 .admin-charts-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -195,9 +308,19 @@ function renderCharts(data) {
 }
 @media (min-width: 768px) {
   .admin-charts-grid {
-    grid-template-columns: 1.1fr 0.9fr;
+    grid-template-columns: 1fr 1fr;
+  }
+  .admin-charts-grid .col-md-12 {
+    grid-column: span 2;
   }
 }
+
+.chart-container-trend {
+  position: relative;
+  height: 300px;
+  width: 100%;
+}
+
 .chart-container {
   position: relative;
   height: 250px;
