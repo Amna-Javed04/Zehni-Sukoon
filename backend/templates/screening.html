@@ -542,6 +542,10 @@ async function submitScreening() {
 }
 
 function displayResults(data) {
+  if (data && data.crisis_redirect) {
+    window.location.href = '/crisis';
+    return;
+  }
   goToStage('results');
   
   document.getElementById('result-score').textContent = data.total_score;
