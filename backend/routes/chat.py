@@ -7,47 +7,97 @@ chat_bp = Blueprint('chat', __name__, url_prefix='/api/chat')
 
 def local_heuristic_extract_score(assessment_type, question, reply):
     """
-    Fallback score extraction using keyword matching in Urdu/Roman Urdu.
+    Fallback score extraction using keyword matching in Urdu/Roman Urdu/English.
     """
     reply_clean = reply.lower().strip()
     
-    # Check if this is the PHQ-9 Q9 self-harm item
+    # 1. Self-harm / Crisis Detection (PHQ-9 Q9)
     is_self_harm_item = "better off dead" in question.lower() or "نقصان" in question or "مر جانا" in question
-    
-    # Check for self-harm risk signals in user reply
     self_harm_keywords = ["mar", "marna", "die", "suicide", "hurt", "nuksan", "nooksan", "zakhmi", "خودکشی", "نقصان", "موت", "مرنا"]
     if is_self_harm_item or any(kw in reply_clean for kw in self_harm_keywords):
-        # Stricter self-harm logic: default to flagging risk
-        # Any mention of suicidal thoughts or negative feelings on Q9 should be flagged as score >= 1
-        # If they explicitly deny, map to 0, otherwise default to 1.
-        denial_keywords = ["nahin", "nahi", "no", "never", "bilkul nahi", "نہیں", "بالکل نہیں"]
-        if any(dk in reply_clean for dk in denial_keywords):
+        denial_keywords = ["bilkul nahi", "bilkul nahin", "kabhi nahi", "kabhi nahin", "no", "never", "نہیں", "بالکل نہیں", "کبھی نہیں"]
+        if any(dk in reply_clean for dk in denial_keywords) or reply_clean == "nahi" or reply_clean == "nahin":
             return 0, "User explicitly denied self-harm thoughts.", False
         return 1, "Self-harm/suicide risk keyword detected or ambiguous response.", False
 
-    # Standard options mapping:
-    # 0: Not at all (بالکل نہیں)
-    # 1: Several days (کئی دن)
-    # 2: More than half the days (آدھے سے زیادہ دن)
-    # 3: Nearly every day (تقریباً ہر روز)
-    
-    # Check score 0
-    if any(kw in reply_clean for kw in ["bilkul nahi", "nahin", "nahi", "no", "never", "بالکل نہیں", "نہیں", "کبھی نہیں"]):
-        return 0, "Negative response matched score 0", False
-    
-    # Check score 3
-    if any(kw in reply_clean for kw in ["har roz", "daily", "always", "every day", "taqreeban", "تقریباً ہر روز", "ہر روز", "روزانہ", "ہمیشہ"]):
-        return 3, "High frequency response matched score 3", False
+    # 2. Vague responses check (requires clarification)
+    vague_phrases = [
+        "pata nahi", "pata nahin", "samajh nahi", "samajh nahin", "don't know", "dont know",
+        "unclear", "unsure", "kuch keh nahi", "kuch keh nahin", "kuch pata nahi", "kuch pata nahin",
+        "ajeeb sa", "bas theek", "bas normal", "mood ajeeb", "samjh nahi", "samjh nahin",
+        "kuch keh nahi sakte", "kuch keh nahin sakte"
+    ]
+    if any(vp in reply_clean for vp in vague_phrases) or reply_clean in ["pata nahi", "pata nahin", "no idea", "not sure"]:
+        # Only clarify if there are no explicit frequency keywords
+        if not any(kw in reply_clean for kw in ["kabhi kabhi", "daily", "har roz", "always"]):
+            return None, "Response is vague and requires clarification.", True
 
-    # Check score 2
-    if any(kw in reply_clean for kw in ["aadhe", "more than half", "half", "mostly", "آدھے", "آدھے سے زیادہ", "زیادہ تر"]):
-        return 2, "Moderate-high frequency response matched score 2", False
-
-    # Check score 1
-    if any(kw in reply_clean for kw in ["kai din", "sometimes", "kabhi kabhi", "few days", "کئی دن", "کبھی کبھی", "چند دن"]):
+    # 3. Explicit low frequency matches first to avoid shadowing by high frequency (e.g. "mostly normal bas thoda sad" should be 1)
+    low_freq_distress = [
+        "kabhi kabhi bhook nahi", "kabhi kabhi bhook nahin",
+        "bas thoda sad", "bas thoda", "sometimes control",
+        "sometimes worried", "sometimes energy"
+    ]
+    low_freq_keywords = [
+        "kabhi kabhi", "kabhikabhi", "sometimes", "kai din", "kaee din", "few days", "some days",
+        "occasionally", "thoda", "thoda sa", "thoda boht", "thoda bohat", "halka", "halka sa",
+        "کئی دن", "کبھی کبھی", "چند دن", "تھوڑا"
+    ]
+    if any(kw in reply_clean for kw in low_freq_distress) or any(kw in reply_clean for kw in low_freq_keywords):
         return 1, "Low frequency response matched score 1", False
 
-    # Default to needing clarification
+    # 4. Explicit moderate frequency matches (e.g. "aadhe se zyada") matched before raw "zyada"
+    mod_freq_keywords = [
+        "aadhe", "aadhey", "half", "more than half", "mostly", "ziada tar", "zyada tar",
+        "half the time", "half time", "آدھے", "آدھے سے زیادہ", "زیادہ تر"
+    ]
+    if any(kw in reply_clean for kw in mod_freq_keywords):
+        # But make sure it's not "mostly normal" which is score 0/1
+        if "mostly normal" in reply_clean or "mostly fine" in reply_clean:
+            return 1, "Mostly normal mapped to mild score 1", False
+        return 2, "Moderate-high frequency response matched score 2", False
+
+    # 5. Severe Symptom Distress without explicit frequency (e.g. "neend nahi aati", "control nahi hota")
+    # This must be run before wellness to prevent false score-0 classifications
+    if "control" in reply_clean and ("nahi" in reply_clean or "nahin" in reply_clean or "control" in reply_clean):
+        # Wait, if they say "no control", it's severe worry
+        return 3, "High distress response (unable to control worry)", False
+    if "neend" in reply_clean and ("nahi" in reply_clean or "nahin" in reply_clean or "sleep" in reply_clean):
+        return 3, "High distress response (insomnia/sleep issues)", False
+    if "dil" in reply_clean and ("nahi" in reply_clean or "nahin" in reply_clean):
+        return 3, "High distress response (loss of interest)", False
+
+    # 6. High Frequency (Score 3)
+    high_freq_distress = [
+        "neend nahi aati bilkul bhi", "neend nahin aati bilkul bhi",
+        "zero interest", "relax nahi kar pata", "relax nahin kar pata"
+    ]
+    high_freq_keywords = [
+        "har waqt", "harwaqt", "daily", "always", "every day", "everyday", "har roz", "harroz",
+        "bohat zyaada", "bohat zyada", "boht zyada", "boht zyaada", "buhat ziada", "buhat zyaada",
+        "ziada", "zyada", "rozana", "constant", "constantly", "hamesha", "nearly every day",
+        "تقریباً ہر روز", "ہر روز", "روزانہ", "ہمیشہ", "بہت زیادہ", "زیادہ"
+    ]
+    if any(kw in reply_clean for kw in high_freq_distress) or any(kw in reply_clean for kw in high_freq_keywords):
+        return 3, "High frequency response matched score 3", False
+
+    # 7. Explicit wellness / negation of symptom (Score 0)
+    wellness_keywords = [
+        "bilkul nahi", "bilkul nahin", "kabhi nahi", "kabhi nahin", "no", "never", "not at all",
+        "zero", "no issue", "no problem", "fine", "absolutely fine", "all good", "perfect",
+        "bilkul theek", "bilkul thik", "sab theek", "sab thik", "normal", "fit", "healthy",
+        "no fear", "absolutely fine", "بالکل نہیں", "نہیں", "کبھی نہیں"
+    ]
+    if any(wk in reply_clean for wk in wellness_keywords) or reply_clean == "nahi" or reply_clean == "nahin":
+        distress_keywords = ["neend", "sleep", "bhook", "appetite", "dil", "interest", "focus", "concentrate", "tension", "pareshan", "ghabrahat"]
+        if not any(dk in reply_clean for dk in distress_keywords):
+            return 0, "Negative response matched score 0", False
+
+    # 8. Fallback distress indicator
+    distress_keywords = ["neend", "sleep", "bhook", "appetite", "dil", "interest", "focus", "concentrate", "tension", "pareshan", "ghabrahat", "anxious", "nervous", "sad", "udasi", "udas"]
+    if any(dk in reply_clean for dk in distress_keywords):
+        return 1, "Symptom mentioned, defaulted to score 1", False
+
     return None, "Unable to map response to 0-3 scale via local heuristics.", True
 
 

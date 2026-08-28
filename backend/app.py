@@ -7,13 +7,15 @@ from flask import Flask, render_template
 from flask_cors import CORS
 from dotenv import load_dotenv
 
+# Load environment variables at module-level before importing config/models
+load_dotenv(override=True)
+
 from .models import db
 from .config import config
 
 
 def create_app(env: str = None) -> Flask:
     """Create and configure the Flask application."""
-    load_dotenv()
 
     env = env or os.environ.get('FLASK_ENV', 'development')
     cfg = config.get(env, config['default'])
@@ -45,8 +47,11 @@ def create_app(env: str = None) -> Flask:
         return render_template('index.html')
 
     @app.route('/login')
-    @app.route('/register')
     def login():
+        return render_template('login.html')
+
+    @app.route('/register')
+    def register():
         return render_template('login.html')
 
     @app.route('/screening')
