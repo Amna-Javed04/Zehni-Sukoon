@@ -29,6 +29,11 @@ class Config:
     # Guest session expiry (hours)
     GUEST_SESSION_EXPIRY_HOURS = int(os.environ.get('GUEST_SESSION_EXPIRY_HOURS', 24))
 
+    # Google Gemini API
+    GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', os.environ.get('Gemini_API', ''))
+    GEMINI_BASE_URL = os.environ.get('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta/openai/')
+    GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-1.5-flash')
+
     # DashScope / Qwen
     DASHSCOPE_API_KEY = os.environ.get('DASHSCOPE_API_KEY', '')
     DASHSCOPE_BASE_URL = os.environ.get('DASHSCOPE_BASE_URL', 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1')

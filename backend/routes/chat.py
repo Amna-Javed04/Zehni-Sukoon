@@ -101,6 +101,27 @@ def local_heuristic_extract_score(assessment_type, question, reply):
     return None, "Unable to map response to 0-3 scale via local heuristics.", True
 
 
+def get_llm_config():
+    """Retrieve active LLM configuration (Gemini or DashScope/Qwen)."""
+    gemini_key = current_app.config.get('GEMINI_API_KEY')
+    if gemini_key:
+        return (
+            gemini_key,
+            current_app.config.get('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta/openai/'),
+            current_app.config.get('GEMINI_MODEL', 'gemini-1.5-flash')
+        )
+    
+    dashscope_key = current_app.config.get('DASHSCOPE_API_KEY')
+    if dashscope_key:
+        return (
+            dashscope_key,
+            current_app.config.get('DASHSCOPE_BASE_URL', 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1'),
+            current_app.config.get('QWEN_MODEL', 'qwen-plus')
+        )
+    
+    return None, None, None
+
+
 @chat_bp.route('/extract-score', methods=['POST'])
 def extract_score():
     """
@@ -116,9 +137,7 @@ def extract_score():
     if not assessment_type or not question or not reply:
         return jsonify({'error': 'assessment_type, question, and reply are required.'}), 400
 
-    api_key = current_app.config.get('DASHSCOPE_API_KEY')
-    base_url = current_app.config.get('DASHSCOPE_BASE_URL')
-    model = current_app.config.get('QWEN_MODEL', 'qwen-plus')
+    api_key, base_url, model = get_llm_config()
 
     # If API key is missing, fall back directly to local heuristics
     if not api_key:
@@ -206,9 +225,7 @@ def companion():
     if not message:
         return jsonify({'error': 'message is required.'}), 400
 
-    api_key = current_app.config.get('DASHSCOPE_API_KEY')
-    base_url = current_app.config.get('DASHSCOPE_BASE_URL')
-    model = current_app.config.get('QWEN_MODEL', 'qwen-plus')
+    api_key, base_url, model = get_llm_config()
 
     if not api_key:
         return jsonify({

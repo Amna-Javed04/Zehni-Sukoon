@@ -20,30 +20,16 @@
 <body class="site-body" id="app-body">
 
   <!-- ═══════════════════════════════════════════════════════
-       QUICK EXIT BUTTON — Always visible, every screen
-       ═══════════════════════════════════════════════════════ -->
-  <button
-    id="quick-exit-btn"
-    class="quick-exit-btn"
-    onclick="quickExit()"
-    title="Quick Exit — immediately navigate away"
-    aria-label="Quick Exit"
-  >
-    <i class="fas fa-times-circle"></i>
-    <span class="quick-exit-label" data-ur="فوری باہر" data-en="Quick Exit">فوری باہر</span>
-  </button>
-
-  <!-- ═══════════════════════════════════════════════════════
        GLOBAL HEADER / NAVBAR
        ═══════════════════════════════════════════════════════ -->
   <nav class="navbar navbar-zs sticky-top" id="main-navbar" role="navigation" aria-label="Main navigation">
-    <div class="container-fluid px-4">
+    <div class="navbar-row">
 
       <!-- Logo + Wordmark -->
       <a class="navbar-brand" href="{{ url_for('index') }}" aria-label="Zehni Sukoon Home">
         <div class="logo-mark" aria-hidden="true">
           <!-- Leaf curling into crescent SVG mark -->
-          <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg width="38" height="38" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
             <rect width="40" height="40" rx="10" fill="#4e635e"/>
             <!-- Sage green leaf -->
             <path d="M12 28 C12 28 10 18 18 12 C18 12 26 16 22 24 C22 24 17 26 12 28Z" fill="#839791" opacity="0.9"/>
@@ -54,8 +40,8 @@
           </svg>
         </div>
         <div class="brand-text">
-          <span class="brand-name-en" data-en="Zehni Sukoon" data-ur="">Zehni Sukoon</span>
-          <span class="brand-name-ur" data-ur="ذہنی سکون" data-en="">ذہنی سکون</span>
+          <span class="brand-name-en" data-en="Zehni Sukoon" data-ur="Zehni Sukoon">Zehni Sukoon</span>
+          <span class="brand-name-ur" data-ur="ذہنی سکون" data-en="ذہنی سکون">ذہنی سکون</span>
         </div>
       </a>
 
