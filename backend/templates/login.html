@@ -65,6 +65,14 @@
 
 {% block scripts %}
 <script>
+// Read a safe same-origin ?next= path (e.g. /screening) so auth can return
+// the user to where they came from. Rejects absolute/protocol-relative URLs.
+function authNextRedirect() {
+  const next = new URLSearchParams(window.location.search).get('next');
+  if (next && next.startsWith('/') && !next.startsWith('//')) return next;
+  return null;
+}
+
 function switchTab(tab) {
   const loginForm  = document.getElementById('login-form');
   const signupForm = document.getElementById('signup-form');
@@ -94,8 +102,8 @@ async function submitLogin(e) {
   btn.textContent = '...';
   try {
     const user = await handleLogin(email, pass);
-    // Role-based redirect: admin → /admin, user → /
-    window.location.href = user.is_admin ? '/admin' : '/';
+    // Return to the page the user came from (e.g. /screening), else role-based home
+    window.location.href = authNextRedirect() || (user.is_admin ? '/admin' : '/');
   } catch (err) {
     showFlash(err.message || 'Login failed', 'error');
     btn.disabled = false;
@@ -121,7 +129,7 @@ async function submitSignup(e) {
   btn.textContent = '...';
   try {
     await handleSignup(email, pass);
-    window.location.href = '/';
+    window.location.href = authNextRedirect() || '/';
   } catch (err) {
     showFlash(err.message || 'Signup failed', 'error');
     btn.disabled = false;

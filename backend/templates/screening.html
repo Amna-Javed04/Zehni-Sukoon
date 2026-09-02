@@ -86,7 +86,43 @@
 
     <div class="d-flex gap-3 mt-4 justify-content-end">
       <button class="btn btn-zs-outline" onclick="goToStage('mode')" data-ur="واپس" data-en="Back">واپس</button>
-      <button id="consent-next-btn" class="btn btn-zs-primary" disabled onclick="goToStage('details')" data-ur="جاری رکھیں" data-en="Continue">جاری رکھیں</button>
+      <button id="consent-next-btn" class="btn btn-zs-primary" disabled onclick="proceedFromConsent()" data-ur="جاری رکھیں" data-en="Continue">جاری رکھیں</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       STAGE 2B: IDENTITY CHOICE (guest vs sign in) — BEFORE the test
+       ═══════════════════════════════════════════════════════ -->
+  <div id="stage-identity" class="glass-card p-5 fade-in-up d-none">
+    <h2 class="text-center mb-3" data-ur="آگے بڑھنے کا طریقہ" data-en="How would you like to continue?">آگے بڑھنے کا طریقہ</h2>
+    <p class="text-center text-muted mb-4" data-ur="جانچ شروع کرنے سے پہلے اپنی شناخت منتخب کریں۔ آپ چاہیں تو مکمل گمنام رہ سکتے ہیں۔" data-en="Choose how to continue before starting. You can stay completely anonymous as a guest.">جانچ شروع کرنے سے پہلے اپنی شناخت منتخب کریں۔ آپ چاہیں تو مکمل گمنام رہ سکتے ہیں۔</p>
+
+    <!-- Shown when NOT signed in -->
+    <div id="identity-guest-prompt" class="pathway-grid">
+      <div class="glass-card pathway-card" onclick="chooseGuestMode()">
+        <div class="pathway-icon"><i class="fas fa-user-secret"></i></div>
+        <h3 data-ur="بطور مہمان جاری رکھیں" data-en="Continue as Guest">بطور مہمان جاری رکھیں</h3>
+        <p class="text-muted" style="font-size:0.9rem;" data-ur="بغیر سائن اِن کے، مکمل گمنام۔ نتائج اسی ڈیوائس تک محدود رہیں گے۔" data-en="No sign-in needed. Fully anonymous; results stay on this device.">بغیر سائن اِن کے، مکمل گمنام۔ نتائج اسی ڈیوائس تک محدود رہیں گے۔</p>
+      </div>
+      <div class="glass-card pathway-card" onclick="window.location.href='/login?next=/screening'">
+        <div class="pathway-icon"><i class="fas fa-right-to-bracket"></i></div>
+        <h3 data-ur="سائن اِن / اکاؤنٹ بنائیں" data-en="Sign in / Create account">سائن اِن / اکاؤنٹ بنائیں</h3>
+        <p class="text-muted" style="font-size:0.9rem;" data-ur="اکاؤنٹ کے ساتھ نتائج محفوظ رکھیں اور بعد میں دیکھیں۔" data-en="Sign in or register so your results are tied to your account.">اکاؤنٹ کے ساتھ نتائج محفوظ رکھیں اور بعد میں دیکھیں۔</p>
+      </div>
+    </div>
+
+    <!-- Shown when already signed in -->
+    <div id="identity-signed-in-prompt" class="text-center d-none">
+      <p class="mb-3"><span data-ur="آپ سائن اِن ہیں:" data-en="You are signed in as:">آپ سائن اِن ہیں:</span> <strong id="identity-user-email"></strong></p>
+      <button class="btn btn-zs-primary" onclick="goToStage('details')" data-ur="اس اکاؤنٹ کے ساتھ جاری رکھیں" data-en="Continue with this account">اس اکاؤنٹ کے ساتھ جاری رکھیں</button>
+      <p class="text-muted mt-3" style="font-size:0.85rem;">
+        <span data-ur="یا" data-en="Or">یا</span>
+        <a href="#" onclick="chooseGuestMode(); return false;" data-ur="بطور مہمان جاری رکھیں" data-en="continue as a guest instead">بطور مہمان جاری رکھیں</a>
+      </p>
+    </div>
+
+    <div class="d-flex justify-content-start mt-4">
+      <button class="btn btn-zs-outline" onclick="goToStage('consent')" data-ur="واپس" data-en="Back">واپس</button>
     </div>
   </div>
 
@@ -118,7 +154,7 @@
     </div>
 
     <div class="d-flex gap-3 justify-content-end">
-      <button class="btn btn-zs-outline" onclick="goToStage('consent')" data-ur="واپس" data-en="Back">واپس</button>
+      <button class="btn btn-zs-outline" onclick="goToStage('identity')" data-ur="واپس" data-en="Back">واپس</button>
       <button class="btn btn-zs-primary" onclick="startQuestions()" data-ur="شروع کریں" data-en="Start screening">شروع کریں</button>
     </div>
   </div>
@@ -187,20 +223,31 @@
       <!-- Guidance text based on score -->
     </div>
 
+    <!-- Crisis support banner (shown alongside results when self-harm risk is flagged) -->
+    <div id="crisis-banner" class="crisis-banner d-none mb-4">
+      <p class="crisis-banner-title" data-ur="⚠️ آپ کی حفاظت اہم ہے" data-en="⚠️ Your Safety Matters">⚠️ آپ کی حفاظت اہم ہے</p>
+      <p class="crisis-banner-text" data-ur="آپ کے جوابات سے پتہ چلتا ہے کہ آپ شدید تکلیف میں ہو سکتے ہیں۔ براہ کرم فوری، خفیہ مدد کے لیے کسی ہیلپ لائن سے رابطہ کریں۔ آپ اکیلے نہیں ہیں۔" data-en="Your responses suggest you may be going through a difficult time. Please reach out to a helpline for free, confidential support right now. You are not alone.">آپ کے جوابات سے پتہ چلتا ہے کہ آپ شدید تکلیف میں ہو سکتے ہیں۔ براہ کرم فوری، خفیہ مدد کے لیے کسی ہیلپ لائن سے رابطہ کریں۔ آپ اکیلے نہیں ہیں۔</p>
+      <a href="{{ url_for('crisis') }}" class="btn btn-zs-lavender text-center" data-ur="ہیلپ لائنز دیکھیں" data-en="View Helplines">ہیلپ لائنز دیکھیں</a>
+    </div>
+
     <!-- Ensemble details (Only visible for PHQ-9) -->
     <div id="ensemble-details-box" class="mb-4 d-none">
       <h4 class="mb-3 text-center" data-ur="اے آئی ماڈل کے نتائج" data-en="AI Ensemble Insights">اے آئی ماڈل کے نتائج</h4>
       <div class="model-vote-row">
         <span>Random Forest</span>
-        <span id="vote-rf">-</span>
+        <span><span id="vote-rf">-</span> <span id="conf-rf" class="model-conf"></span></span>
       </div>
       <div class="model-vote-row">
         <span>SVM</span>
-        <span id="vote-svm">-</span>
+        <span><span id="vote-svm">-</span> <span id="conf-svm" class="model-conf"></span></span>
       </div>
       <div class="model-vote-row">
         <span>XGBoost</span>
-        <span id="vote-xgb">-</span>
+        <span><span id="vote-xgb">-</span> <span id="conf-xgb" class="model-conf"></span></span>
+      </div>
+      <div class="model-vote-row model-agreement-row">
+        <span data-ur="اجماع (Agreement)" data-en="Ensemble Agreement">اجماع (Agreement)</span>
+        <span id="vote-agreement">-</span>
       </div>
     </div>
 
@@ -277,7 +324,7 @@ function selectMode(mode) {
 
 function goToStage(stageId) {
   // Hide all stages
-  ['select', 'mode', 'consent', 'details', 'questions', 'chat', 'results'].forEach(id => {
+  ['select', 'mode', 'consent', 'identity', 'details', 'questions', 'chat', 'results'].forEach(id => {
     const el = document.getElementById(`stage-${id}`);
     if (el) el.classList.add('d-none');
   });
@@ -292,6 +339,7 @@ function goToStage(stageId) {
   let activeBadgeIndex = 1;
   if (stageId === 'mode') activeBadgeIndex = 1;
   else if (stageId === 'consent') activeBadgeIndex = 2;
+  else if (stageId === 'identity') activeBadgeIndex = 2;
   else if (stageId === 'details') activeBadgeIndex = 3;
   else if (stageId === 'questions' || stageId === 'chat') activeBadgeIndex = 4;
   else if (stageId === 'results') activeBadgeIndex = 5;
@@ -303,6 +351,39 @@ function goToStage(stageId) {
 function toggleConsentBtn() {
   const isChecked = document.getElementById('consent-check').checked;
   document.getElementById('consent-next-btn').disabled = !isChecked;
+}
+
+// After consent, let the user CHOOSE their identity BEFORE the test starts.
+function proceedFromConsent() {
+  const user = authGetUser();
+  const guestPrompt = document.getElementById('identity-guest-prompt');
+  const signedInPrompt = document.getElementById('identity-signed-in-prompt');
+
+  if (user && authGetToken()) {
+    // Already signed in -> show account confirmation instead of the guest/sign-in choice
+    guestPrompt.classList.add('d-none');
+    signedInPrompt.classList.remove('d-none');
+    document.getElementById('identity-user-email').textContent = user.email;
+  } else {
+    guestPrompt.classList.remove('d-none');
+    signedInPrompt.classList.add('d-none');
+  }
+  goToStage('identity');
+}
+
+// Establish an anonymous guest session, then continue to the details stage.
+async function chooseGuestMode() {
+  // Reuse an existing guest session if we already have one
+  if (authGetGuestId()) {
+    goToStage('details');
+    return;
+  }
+  try {
+    await handleGuestSession();
+    goToStage('details');
+  } catch (err) {
+    showFlash(err.message || 'Could not start a guest session. Please try again.', 'error');
+  }
 }
 
 function startQuestions() {
@@ -473,16 +554,10 @@ async function sendScreeningChatMessage(e) {
     const score = data.score;
     const needsClarification = data.needs_clarification;
 
-    // Strict self-harm Question 9 handling
-    if (currentAssessment === 'phq9' && chatQuestionIndex === 8) {
-      // If score is > 0 OR if it's ambiguous (needs_clarification is true / score is null)
-      if (score > 0 || score === null || needsClarification) {
-        window.location.href = '/crisis';
-        return;
-      }
-    }
-
-    if (needsClarification) {
+    // Question 9 (self-harm) no longer hard-redirects mid-test. The crisis flag is
+    // decided server-side and surfaced as a banner on the results screen, so the
+    // user still receives their score, severity and per-model confidences.
+    if (needsClarification || score === null || score === undefined) {
       const followUp = isUr
         ? "براہ کرم وضاحت کریں کہ یہ کیفیت کتنی کثرت سے ہوتی ہے (مثلاً: بالکل نہیں، کبھی کبھی، آدھے سے زیادہ دن، یا روزانہ)؟"
         : "Could you clarify how often this happens? (e.g., not at all, sometimes, more than half the days, or nearly every day)";
@@ -522,6 +597,13 @@ async function submitScreening() {
   }
 
   try {
+    // Guarantee an identity exists before submitting. Normally the pre-test
+    // identity stage already set this up, but guard against refreshes/edge cases
+    // so the result call can never fail with "login or start guest session".
+    if (!authGetToken() && !authGetGuestId()) {
+      await handleGuestSession();
+    }
+
     const data = await Api.screening.result({
       assessment_type: currentAssessment,
       answers: answers,
@@ -542,11 +624,15 @@ async function submitScreening() {
 }
 
 function displayResults(data) {
-  if (data && data.crisis_redirect) {
-    window.location.href = '/crisis';
-    return;
-  }
   goToStage('results');
+
+  // Crisis banner is shown ALONGSIDE the results, never instead of them.
+  const crisisBanner = document.getElementById('crisis-banner');
+  if (data && data.crisis_redirect) {
+    crisisBanner.classList.remove('d-none');
+  } else {
+    crisisBanner.classList.add('d-none');
+  }
   
   document.getElementById('result-score').textContent = data.total_score;
   
@@ -582,13 +668,18 @@ function displayResults(data) {
   }
   desc.textContent = feedbackText;
 
-  // Ensemble votes visualization
+  // Ensemble votes + per-model confidence visualization
   const ensembleBox = document.getElementById('ensemble-details-box');
   if (data.assessment_type === 'phq9' && data.model_votes) {
     ensembleBox.classList.remove('d-none');
-    document.getElementById('vote-rf').textContent = data.model_votes.random_forest.prediction;
-    document.getElementById('vote-svm').textContent = data.model_votes.svm.prediction;
-    document.getElementById('vote-xgb').textContent = data.model_votes.xgboost.prediction;
+    const mv = data.model_votes;
+    document.getElementById('vote-rf').textContent = mv.random_forest.prediction;
+    document.getElementById('conf-rf').textContent = `(${mv.random_forest.confidence}%)`;
+    document.getElementById('vote-svm').textContent = mv.svm.prediction;
+    document.getElementById('conf-svm').textContent = `(${mv.svm.confidence}%)`;
+    document.getElementById('vote-xgb').textContent = mv.xgboost.prediction;
+    document.getElementById('conf-xgb').textContent = `(${mv.xgboost.confidence}%)`;
+    document.getElementById('vote-agreement').textContent = mv.ensemble_agreement || '-';
   } else {
     ensembleBox.classList.add('d-none');
   }

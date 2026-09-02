@@ -123,15 +123,18 @@ for label, answers in phq_cases:
         report("model_votes present (ensemble WAS used, not threshold fallback)", False,
                "model_votes is null — threshold fallback was used instead of ML models!")
 
-# Crisis path sanity check: q9 > 0 must short-circuit to crisis, bypassing models by design
+# Crisis path: q9 > 0 must flag crisis_redirect AND still return full ML results
 r = requests.post(f"{BASE}/api/screening/result", json={
     "assessment_type": "phq9",
     "answers": [1, 1, 1, 1, 1, 1, 1, 1, 2],
     "age_group": "18-24", "gender": "Female", "language": "en"
 }, headers=headers, timeout=30)
 d = r.json()
-report("Crisis redirect when q9>0 (by design, bypasses ensemble)", d.get("crisis_redirect") is True,
+report("Crisis redirect when q9>0", d.get("crisis_redirect") is True,
        f"severity={d.get('severity')}, crisis_redirect={d.get('crisis_redirect')}")
+report("Crisis case still returns ensemble model_votes (score/severity/confidence shown)",
+       d.get("model_votes") is not None and bool(d.get("severity")),
+       f"model_votes={'present' if d.get('model_votes') else 'NULL'}")
 
 print()
 print("=" * 70)

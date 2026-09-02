@@ -174,20 +174,11 @@ def get_result():
     screening.total_score = total_score
     screening.language = language
 
-    # Return immediate crisis redirection if crisis detected
-    if is_crisis:
-        screening.severity = "Severe"
-        screening.model_votes = None
-        db.session.commit()
-        return jsonify({
-            'screening_id': screening.id,
-            'assessment_type': screening.assessment_type,
-            'total_score': total_score,
-            'severity': "Severe",
-            'model_votes': None,
-            'crisis_redirect': True,
-            'created_at': screening.created_at.isoformat()
-        }), 200
+    # NOTE: We intentionally do NOT short-circuit on crisis. The severity
+    # classification and per-model ensemble votes are still computed below so the
+    # user always sees their score, severity and model confidences. The crisis
+    # flag is returned alongside the results (crisis_redirect) and the frontend
+    # surfaces crisis resources as a banner on top of the results.
 
     # --- Perform Severity Scoring ---
     severity = "Minimal"
@@ -291,5 +282,6 @@ def get_result():
         'total_score': total_score,
         'severity': severity,
         'model_votes': model_votes,
+        'crisis_redirect': is_crisis,
         'created_at': screening.created_at.isoformat()
     }), 200
