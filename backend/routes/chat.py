@@ -108,7 +108,7 @@ def get_llm_config():
         return (
             gemini_key,
             current_app.config.get('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta/openai/'),
-            current_app.config.get('GEMINI_MODEL', 'gemini-1.5-flash')
+            current_app.config.get('GEMINI_MODEL', 'gemini-2.5-flash')
         )
     
     dashscope_key = current_app.config.get('DASHSCOPE_API_KEY')

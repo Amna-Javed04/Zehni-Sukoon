@@ -51,7 +51,7 @@ def get_current_user_or_guest():
         token = auth_header.split(' ', 1)[1]
         try:
             payload = jwt.decode(token, current_app.config['JWT_SECRET_KEY'], algorithms=['HS256'])
-            user_id = payload.get('sub')
+            user_id = int(payload.get('sub'))  # 'sub' is stored as a string in the token
             user = User.query.get(user_id)
             if user:
                 return user.id, None

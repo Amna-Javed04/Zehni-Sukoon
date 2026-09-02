@@ -35,8 +35,8 @@ def require_auth(f):
         except jwt.InvalidTokenError:
             return jsonify({'error': 'Invalid token'}), 401
 
-        # Verify user still exists in DB
-        user = User.query.get(payload['sub'])
+        # Verify user still exists in DB ('sub' is stored as a string in the token)
+        user = User.query.get(int(payload['sub']))
         if not user:
             return jsonify({'error': 'User not found'}), 401
 
@@ -64,7 +64,7 @@ def require_admin(f):
         except jwt.InvalidTokenError:
             return jsonify({'error': 'Invalid token'}), 401
 
-        user = User.query.get(payload['sub'])
+        user = User.query.get(int(payload['sub']))
         if not user:
             return jsonify({'error': 'User not found'}), 401
 

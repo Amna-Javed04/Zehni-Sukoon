@@ -17,7 +17,7 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
 def _generate_token(user_id: int, is_admin: bool) -> str:
     payload = {
-        'sub': user_id,
+        'sub': str(user_id),   # PyJWT >= 2.10 requires 'sub' to be a string
         'is_admin': is_admin,
         'iat': datetime.now(timezone.utc),
         'exp': datetime.now(timezone.utc) + current_app.config['JWT_ACCESS_TOKEN_EXPIRES'],

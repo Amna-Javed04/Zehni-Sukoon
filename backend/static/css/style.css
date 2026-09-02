@@ -416,7 +416,6 @@ html[dir="rtl"] .hero-title {
 @keyframes breatheOut { from { transform: scale(1.4); } to { transform: scale(1); } }
 
 /* ── Form styles ── */
-.section-padding { padding: 4rem 0; }
 .form-control-zs {
   border: 2px solid rgba(131,151,145,0.3);
   border-radius: var(--radius-sm);
@@ -662,6 +661,8 @@ html[dir="rtl"] .chat-bubble.bot { align-self: flex-end; border-bottom-left-radi
 .text-center { text-align: center; }
 .d-none { display: none !important; }
 .container { max-width: 1140px; margin: 0 auto; padding: 0 1rem; }
+/* Defined AFTER .container so its vertical padding wins the cascade */
+.section-padding { padding: 4rem 0; }
 
 /* ── Spacing & layout utilities ──
    Templates use Bootstrap-style helpers but no Bootstrap is loaded,
