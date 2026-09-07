@@ -24,8 +24,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application
 COPY . /app/
 
-# Expose the port Gunicorn will run on
+# Expose the default port; platforms like Railway inject $PORT at runtime.
 EXPOSE 5000
 
-# Start Flask app using Gunicorn WSGI server in production mode
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--timeout", "120", "run:app"]
+# Start Flask app using Gunicorn WSGI server in production mode.
+# ${PORT:-5000} lets the platform override the port; falls back to 5000 locally.
+CMD ["sh", "-c", "exec gunicorn --bind 0.0.0.0:${PORT:-5000} --workers 4 --timeout 120 run:app"]
