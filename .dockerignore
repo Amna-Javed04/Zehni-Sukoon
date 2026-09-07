@@ -1,0 +1,31 @@
+# ─────────────────────────────────────────────────────────────
+# Docker build context exclusions.
+# The Dockerfile uses `COPY . /app/`, so anything NOT listed here
+# (including your real `.env`) would be baked into the image.
+# ─────────────────────────────────────────────────────────────
+
+# Local environment & secrets — MUST NOT enter the image
+.env
+.env.*
+
+# Virtualenv & Python caches
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Local databases & instance data
+instance/
+*.db
+*.sqlite
+*.sqlite3
+
+# Version control & tooling / editor dirs
+.git/
+.gitignore
+.qoder/
+.vscode/
+
+# Note: model *.pkl files are intentionally NOT ignored — the app loads them
+# from the project root at runtime.

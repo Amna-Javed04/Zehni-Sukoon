@@ -27,6 +27,32 @@ def create_app(env: str = None) -> Flask:
     )
     app.config.from_object(cfg)
 
+    # --- Production safety guard -------------------------------------------
+    # Refuse to boot in production with missing/placeholder secrets. This
+    # prevents deploying with the committed example values by mistake.
+    if env == 'production':
+        def _insecure(v):
+            if not v:
+                return True
+            s = str(v).lower()
+            return ('change-me' in s or 'change_me' in s or 'changeme' in s
+                    or s.startswith('your-') or 'placeholder' in s or s in ('todo', 'none'))
+
+        problems = []
+        if _insecure(app.config.get('SECRET_KEY')):
+            problems.append('SECRET_KEY')
+        if _insecure(app.config.get('JWT_SECRET_KEY')):
+            problems.append('JWT_SECRET_KEY')
+        if _insecure(app.config.get('SQLALCHEMY_DATABASE_URI')):
+            problems.append('DATABASE_URL')
+        if problems:
+            raise RuntimeError(
+                'Refusing to start in production with insecure/placeholder values for: '
+                + ', '.join(problems)
+                + '. Provide real secrets via environment variables (.env is gitignored).'
+            )
+    # -----------------------------------------------------------------------
+
     # --- Extensions ---
     db.init_app(app)
     CORS(app, origins=cfg.CORS_ORIGINS, supports_credentials=True)
@@ -73,6 +99,10 @@ def create_app(env: str = None) -> Flask:
     @app.route('/crisis')
     def crisis():
         return render_template('crisis.html')
+
+    @app.route('/reset-password')
+    def reset_password_page():
+        return render_template('reset.html')
 
     # Health check
     @app.route('/api/health')

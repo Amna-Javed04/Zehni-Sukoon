@@ -39,6 +39,17 @@ class Config:
     DASHSCOPE_BASE_URL = os.environ.get('DASHSCOPE_BASE_URL', 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1')
     QWEN_MODEL = os.environ.get('QWEN_MODEL', 'qwen-plus')
 
+    # Password reset (stateless signed token)
+    PASSWORD_RESET_EXPIRY_MINUTES = int(os.environ.get('PASSWORD_RESET_EXPIRY_MINUTES', 30))
+
+    # Outgoing mail (optional). If SMTP_HOST is unset, reset links are logged
+    # instead of emailed, so the app deploys with zero extra secrets.
+    SMTP_HOST = os.environ.get('SMTP_HOST', '')
+    SMTP_PORT = int(os.environ.get('SMTP_PORT', 587))
+    SMTP_USERNAME = os.environ.get('SMTP_USERNAME', '')
+    SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD', '')
+    MAIL_FROM = os.environ.get('MAIL_FROM', '')
+
 
 class DevelopmentConfig(Config):
     DEBUG = True

@@ -48,6 +48,10 @@ const Api = {
       apiFetch('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
     guest: () =>
       apiFetch('/auth/guest', { method: 'POST' }),
+    forgotPassword: (email) =>
+      apiFetch('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
+    resetPassword: (token, password) =>
+      apiFetch('/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, password }) }),
   },
   screening: {
     start: (payload) =>

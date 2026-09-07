@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% block title %}پاس ورڈ ری سیٹ{% endblock %}
+{% block meta_description %}Set a new password — Zehni Sukoon{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+  <div class="glass-card auth-card">
+    <h3 class="reset-title" data-ur="نیا پاس ورڈ مقرر کریں" data-en="Set a new password">نیا پاس ورڈ مقرر کریں</h3>
+    <p class="reset-sub" data-ur="اپنا نیا پاس ورڈ درج کریں۔ کم از کم ۸ حروف۔"
+       data-en="Enter your new password. At least 8 characters.">اپنا نیا پاس ورڈ درج کریں۔ کم از کم ۸ حروف۔</p>
+
+    <div id="reset-error" class="reset-error d-none"></div>
+
+    <form id="reset-form" onsubmit="submitReset(event)" novalidate>
+      <div class="mb-3">
+        <label class="form-label-zs" data-ur="نیا پاس ورڈ" data-en="New password">نیا پاس ورڈ</label>
+        <div class="password-wrap">
+          <input type="password" id="reset-password" class="form-control-zs"
+            data-ph-ur="کم از کم ۸ حروف" data-ph-en="Min 8 characters" required autocomplete="new-password">
+          <button type="button" class="pwd-toggle" onclick="togglePassword('reset-password', this)"
+            aria-label="Show password" title="دکھائیں / چھپائیں"><i class="fas fa-eye"></i></button>
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label-zs" data-ur="پاس ورڈ کی تصدیق" data-en="Confirm password">پاس ورڈ کی تصدیق</label>
+        <div class="password-wrap">
+          <input type="password" id="reset-password2" class="form-control-zs"
+            data-ph-ur="دوبارہ درج کریں" data-ph-en="Re-enter password" required autocomplete="new-password">
+          <button type="button" class="pwd-toggle" onclick="togglePassword('reset-password2', this)"
+            aria-label="Show password" title="دکھائیں / چھپائیں"><i class="fas fa-eye"></i></button>
+        </div>
+      </div>
+      <button type="submit" class="btn-zs-primary btn-zs-lg" style="width:100%" id="reset-submit-btn"
+        data-ur="پاس ورڈ محفوظ کریں" data-en="Save password">پاس ورڈ محفوظ کریں</button>
+    </form>
+
+    <p class="auth-privacy-note">
+      <a href="/login" class="forgot-link" data-ur="واپس لاگ ان پر جائیں" data-en="Back to login">واپس لاگ ان پر جائیں</a>
+    </p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function togglePassword(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const icon = btn ? btn.querySelector('i') : null;
+  if (input.type === 'password') {
+    input.type = 'text';
+    if (icon) { icon.classList.remove('fa-eye'); icon.classList.add('fa-eye-slash'); }
+  } else {
+    input.type = 'password';
+    if (icon) { icon.classList.remove('fa-eye-slash'); icon.classList.add('fa-eye'); }
+  }
+}
+
+function resetError(ur, en) {
+  const lang = getCurrentLang();
+  const box = document.getElementById('reset-error');
+  box.textContent = lang === 'ur' ? ur : en;
+  box.classList.remove('d-none');
+}
+
+async function submitReset(e) {
+  e.preventDefault();
+  const lang  = getCurrentLang();
+  const token = new URLSearchParams(window.location.search).get('token');
+  const btn   = document.getElementById('reset-submit-btn');
+  const p1    = document.getElementById('reset-password').value;
+  const p2    = document.getElementById('reset-password2').value;
+
+  document.getElementById('reset-error').classList.add('d-none');
+
+  if (!token) { resetError('ری سیٹ لنک غائب ہے۔ براہ کرم نیا لنک request کریں۔', 'Reset link is missing. Please request a new one.'); return; }
+  if (p1.length < 8) { resetError('پاس ورڈ کم از کم ۸ حروف ہونا چاہیے', 'Password must be at least 8 characters'); return; }
+  if (p1 !== p2) { resetError('دونوں پاس ورڈ مطابقت نہیں رکھتے', 'Passwords do not match'); return; }
+
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    await Api.auth.resetPassword(token, p1);
+    showFlash(lang === 'ur' ? 'پاس ورڈ کامیابی سے تبدیل ہو گیا۔ اب لاگ ان کریں۔' : 'Password changed successfully. Please log in.', 'success');
+    setTimeout(() => { window.location.href = '/login'; }, 1500);
+  } catch (err) {
+    resetError(err.message || 'ری سیٹ ناکام رہا', err.message || 'Reset failed');
+    btn.disabled = false;
+    btn.textContent = lang === 'ur' ? 'پاس ورڈ محفوظ کریں' : 'Save password';
+  }
+}
+</script>
+
+<style>
+.reset-title { margin:0 0 .35rem; font-size:1.2rem; color:var(--text-main); }
+.reset-sub { margin:0 0 1.25rem; font-size:.88rem; color:var(--text-muted); line-height:1.5; }
+.reset-error {
+  background:rgba(196,80,80,.12); color:#a83838; border:1px solid rgba(196,80,80,.35);
+  border-radius:var(--radius-sm); padding:.6rem .8rem; font-size:.85rem; margin-bottom:1rem;
+}
+html[dir="rtl"] .reset-title, html[dir="rtl"] .reset-sub { text-align:right; }
+
+/* Password show/hide toggle (shared style for this page) */
+.password-wrap { position: relative; }
+.password-wrap .form-control-zs { padding-inline-end: 2.9rem; }
+.pwd-toggle {
+  position:absolute; inset-inline-end:.7rem; top:50%; transform:translateY(-50%);
+  background:none; border:none; cursor:pointer; color:var(--text-muted);
+  font-size:1.05rem; padding:.25rem; line-height:1; transition:var(--transition);
+}
+.pwd-toggle:hover, .pwd-toggle:focus-visible { color:var(--brand-green); outline:none; }
+.form-label-zs { display:block; font-weight:600; margin-bottom:.35rem; font-size:.9rem; }
+.forgot-link { color:var(--brand-green-dark); font-size:.85rem; font-weight:600; text-decoration:none; }
+.forgot-link:hover { text-decoration:underline; }
+.auth-privacy-note { text-align:center; font-size:.78rem; color:var(--text-muted); margin-top:1rem; line-height:1.5; }
+</style>
+{% endblock %}

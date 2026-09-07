@@ -22,8 +22,16 @@
       </div>
       <div class="mb-3">
         <label class="form-label-zs" data-ur="پاس ورڈ" data-en="Password">پاس ورڈ</label>
-        <input type="password" id="login-password" class="form-control-zs"
-          data-ph-ur="پاس ورڈ درج کریں" data-ph-en="Enter password" required autocomplete="current-password">
+        <div class="password-wrap">
+          <input type="password" id="login-password" class="form-control-zs"
+            data-ph-ur="پاس ورڈ درج کریں" data-ph-en="Enter password" required autocomplete="current-password">
+          <button type="button" class="pwd-toggle" onclick="togglePassword('login-password', this)"
+            aria-label="Show password" title="دکھائیں / چھپائیں"><i class="fas fa-eye"></i></button>
+        </div>
+      </div>
+      <div class="login-options-row">
+        <a href="#" class="forgot-link" onclick="openForgotPassword(event)"
+          data-ur="پاس ورڈ بھول گئے؟" data-en="Forgot password?">پاس ورڈ بھول گئے؟</a>
       </div>
       <button type="submit" class="btn-zs-primary btn-zs-lg" style="width:100%" id="login-submit-btn"
         data-ur="داخل ہوں" data-en="Login">داخل ہوں</button>
@@ -38,8 +46,12 @@
       </div>
       <div class="mb-3">
         <label class="form-label-zs" data-ur="پاس ورڈ" data-en="Password">پاس ورڈ</label>
-        <input type="password" id="signup-password" class="form-control-zs"
-          data-ph-ur="کم از کم ۸ حروف" data-ph-en="Min 8 characters" required autocomplete="new-password">
+        <div class="password-wrap">
+          <input type="password" id="signup-password" class="form-control-zs"
+            data-ph-ur="کم از کم ۸ حروف" data-ph-en="Min 8 characters" required autocomplete="new-password">
+          <button type="button" class="pwd-toggle" onclick="togglePassword('signup-password', this)"
+            aria-label="Show password" title="دکھائیں / چھپائیں"><i class="fas fa-eye"></i></button>
+        </div>
       </div>
       <button type="submit" class="btn-zs-primary btn-zs-lg" style="width:100%" id="signup-submit-btn"
         data-ur="اکاؤنٹ بنائیں" data-en="Create Account">اکاؤنٹ بنائیں</button>
@@ -59,6 +71,27 @@
        data-en="No personal information is stored for guest sessions.">
       مہمان کے طور پر کوئی ذاتی معلومات محفوظ نہیں کی جاتی۔
     </p>
+  </div>
+</div>
+
+<!-- Forgot password modal -->
+<div class="zs-modal-overlay d-none" id="forgot-modal" onclick="if(event.target===this)closeForgotModal()">
+  <div class="zs-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="forgot-title">
+    <h3 id="forgot-title" class="zs-modal-title" data-ur="پاس ورڈ ری سیٹ کریں" data-en="Reset your password">پاس ورڈ ری سیٹ کریں</h3>
+    <p class="zs-modal-sub" data-ur="اپنا ای میل درج کریں۔ اگر اکاؤنٹ موجود ہے تو ری سیٹ لنک بھیجا جائے گا۔"
+       data-en="Enter your email. If an account exists, a reset link will be sent.">اپنا ای میل درج کریں۔ اگر اکاؤنٹ موجود ہے تو ری سیٹ لنک بھیجا جائے گا۔</p>
+    <div class="mb-3">
+      <label class="form-label-zs" data-ur="ای میل" data-en="Email">ای میل</label>
+      <input type="email" id="forgot-email" class="form-control-zs"
+        data-ph-ur="آپ کا ای میل" data-ph-en="Your email" autocomplete="email">
+    </div>
+    <div id="forgot-result" class="d-none" style="margin-bottom:.5rem"></div>
+    <div style="display:flex;gap:.6rem;margin-top:.5rem">
+      <button type="button" class="btn btn-zs-outline" style="flex:1" onclick="closeForgotModal()"
+        data-ur="منسوخ" data-en="Cancel">منسوخ</button>
+      <button type="button" class="btn btn-zs-primary" style="flex:1" id="forgot-submit-btn" onclick="submitForgotPassword()"
+        data-ur="لنک بھیجیں" data-en="Send link">لنک بھیجیں</button>
+    </div>
   </div>
 </div>
 {% endblock %}
@@ -146,6 +179,79 @@ async function continueAsGuest() {
     showFlash(err.message || 'Could not start guest session', 'error');
   }
 }
+
+// ── Password show/hide eye toggle ──────────────────────────────
+function togglePassword(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const icon = btn ? btn.querySelector('i') : null;
+  if (input.type === 'password') {
+    input.type = 'text';
+    if (icon) { icon.classList.remove('fa-eye'); icon.classList.add('fa-eye-slash'); }
+    if (btn) btn.setAttribute('aria-label', 'Hide password');
+  } else {
+    input.type = 'password';
+    if (icon) { icon.classList.remove('fa-eye-slash'); icon.classList.add('fa-eye'); }
+    if (btn) btn.setAttribute('aria-label', 'Show password');
+  }
+}
+
+// ── Forgot password modal ──────────────────────────────────────
+function openForgotPassword(e) {
+  if (e) e.preventDefault();
+  const modal = document.getElementById('forgot-modal');
+  if (!modal) return;
+  modal.classList.remove('d-none');
+  const box = document.getElementById('forgot-result');
+  if (box) { box.classList.add('d-none'); box.innerHTML = ''; }
+  const emailInput = document.getElementById('forgot-email');
+  const loginEmail = document.getElementById('login-email');
+  if (emailInput && loginEmail) emailInput.value = loginEmail.value.trim();
+  setTimeout(() => emailInput && emailInput.focus(), 50);
+}
+
+function closeForgotModal() {
+  const modal = document.getElementById('forgot-modal');
+  if (modal) modal.classList.add('d-none');
+}
+
+async function submitForgotPassword() {
+  const btn   = document.getElementById('forgot-submit-btn');
+  const email = document.getElementById('forgot-email').value.trim();
+  const lang  = getCurrentLang();
+  if (!email) {
+    showFlash(lang === 'ur' ? 'براہ کرم ای میل درج کریں' : 'Please enter your email', 'error');
+    return;
+  }
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    const res = await Api.auth.forgotPassword(email);
+    const box = document.getElementById('forgot-result');
+    box.classList.remove('d-none');
+    let html = '<p class="forgot-ok">' +
+      (lang === 'ur'
+        ? 'اگر یہ ای میل موجود ہے تو ری سیٹ لنک بھیج دیا گیا ہے۔ اپنا ای میل چیک کریں۔'
+        : 'If that email exists, a reset link has been sent. Please check your inbox.') +
+      '</p>';
+    // reset_url is only returned by the backend in development mode (safe, never in production)
+    if (res && res.reset_url) {
+      html += '<p style="margin-top:.6rem;font-size:.85rem"><a class="forgot-link" href="' + res.reset_url +
+        '">' + (lang === 'ur' ? 'ڈیولپمنٹ: ری سیٹ لنک کھولیں' : 'Development: open reset link') + '</a></p>';
+    }
+    box.innerHTML = html;
+    btn.textContent = lang === 'ur' ? 'لنک بھیجیں' : 'Send link';
+    btn.disabled = false;
+  } catch (err) {
+    showFlash(err.message || 'Request failed', 'error');
+    btn.textContent = lang === 'ur' ? 'لنک بھیجیں' : 'Send link';
+    btn.disabled = false;
+  }
+}
+
+window.togglePassword    = togglePassword;
+window.openForgotPassword = openForgotPassword;
+window.closeForgotModal  = closeForgotModal;
+window.submitForgotPassword = submitForgotPassword;
 </script>
 
 <style>
@@ -171,5 +277,31 @@ html[dir="ltr"] .auth-tab-btn { font-family:var(--font-latin); }
   text-align:center; font-size:.78rem; color:var(--text-muted);
   margin-top:.75rem; line-height:1.5;
 }
+
+/* Password show/hide toggle (direction-aware for RTL/LTR) */
+.password-wrap { position: relative; }
+.password-wrap .form-control-zs { padding-inline-end: 2.9rem; }
+.pwd-toggle {
+  position:absolute; inset-inline-end:.7rem; top:50%; transform:translateY(-50%);
+  background:none; border:none; cursor:pointer; color:var(--text-muted);
+  font-size:1.05rem; padding:.25rem; line-height:1; transition:var(--transition);
+}
+.pwd-toggle:hover, .pwd-toggle:focus-visible { color:var(--brand-green); outline:none; }
+
+/* Forgot-password link */
+.login-options-row { display:flex; justify-content:flex-end; margin:-.15rem 0 1rem; }
+html[dir="rtl"] .login-options-row { justify-content:flex-start; }
+.forgot-link { color:var(--brand-green-dark); font-size:.85rem; font-weight:600; text-decoration:none; }
+.forgot-link:hover { text-decoration:underline; }
+
+/* Reset modal */
+.zs-modal-overlay {
+  position:fixed; inset:0; background:rgba(20,25,24,.55); backdrop-filter:blur(2px);
+  display:flex; align-items:center; justify-content:center; z-index:1000; padding:1rem;
+}
+.zs-modal { max-width:430px; width:100%; padding:1.5rem; border-radius:var(--radius-sm); }
+.zs-modal-title { margin:0 0 .35rem; font-size:1.15rem; color:var(--text-main); }
+.zs-modal-sub { margin:0 0 1rem; font-size:.88rem; color:var(--text-muted); line-height:1.55; }
+.forgot-ok { color:var(--brand-green-dark); font-size:.9rem; margin:0; line-height:1.5; }
 </style>
 {% endblock %}

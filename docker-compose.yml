@@ -1,5 +1,12 @@
 version: '3.8'
 
+# ─────────────────────────────────────────────────────────────
+# Zehni Sukoon — Docker Compose
+# No real credentials live in this file. Compose interpolates ${VAR}
+# from a local, git-ignored `.env` (copy `.env.example` → `.env` and fill in).
+# Secrets marked with `:?` are REQUIRED — startup fails loudly if unset.
+# ─────────────────────────────────────────────────────────────
+
 services:
   web:
     build: .
@@ -7,21 +14,33 @@ services:
       - "5000:5000"
     environment:
       - FLASK_ENV=production
-      - SECRET_KEY=production-secret-key-change-me
-      - JWT_SECRET_KEY=production-jwt-secret-key-change-me
-      - DATABASE_URL=postgresql://zehni_user:REMOVED_POSTGRES_PASSWORD@db:5432/zehni_sukoon
-      - DASHSCOPE_API_KEY=your_production_api_key_here
-      - DASHSCOPE_BASE_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1
-      - QWEN_MODEL=qwen-plus
+      - SECRET_KEY=${SECRET_KEY:?SECRET_KEY must be set in .env}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set in .env}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-zehni_user}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@db:5432/${POSTGRES_DB:-zehni_sukoon}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:5173}
+      # LLM provider — set at least one of the two keys below
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_BASE_URL=${GEMINI_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai/}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+      - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY:-}
+      - DASHSCOPE_BASE_URL=${DASHSCOPE_BASE_URL:-https://dashscope-intl.aliyuncs.com/compatible-mode/v1}
+      - QWEN_MODEL=${QWEN_MODEL:-qwen-plus}
+      # Optional: enable password-reset emails (otherwise links are logged)
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USERNAME=${SMTP_USERNAME:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - MAIL_FROM=${MAIL_FROM:-}
+      - PASSWORD_RESET_EXPIRY_MINUTES=${PASSWORD_RESET_EXPIRY_MINUTES:-30}
     depends_on:
       - db
 
   db:
     image: postgres:15-alpine
     environment:
-      - POSTGRES_USER=zehni_user
-      - POSTGRES_PASSWORD=REMOVED_POSTGRES_PASSWORD
-      - POSTGRES_DB=zehni_sukoon
+      - POSTGRES_USER=${POSTGRES_USER:-zehni_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+      - POSTGRES_DB=${POSTGRES_DB:-zehni_sukoon}
     ports:
       - "5432:5432"
     volumes:
