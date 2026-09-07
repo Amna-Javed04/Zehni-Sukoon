@@ -3,7 +3,7 @@ Zehni Sukoon — Flask Application Factory
 """
 
 import os
-from flask import Flask, render_template
+from flask import Flask, render_template, redirect, url_for
 from flask_cors import CORS
 from dotenv import load_dotenv
 
@@ -62,10 +62,12 @@ def create_app(env: str = None) -> Flask:
     from .routes.screening import screening_bp
     from .routes.admin import admin_bp
     from .routes.chat import chat_bp
+    from .routes.user import user_bp
     app.register_blueprint(auth_bp)
     app.register_blueprint(screening_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(chat_bp)
+    app.register_blueprint(user_bp)
 
     # --- Page Routes (serve templates) ---
     @app.route('/')
@@ -84,17 +86,27 @@ def create_app(env: str = None) -> Flask:
     def screening():
         return render_template('screening.html')
 
-    @app.route('/companion')
-    def companion():
-        return render_template('companion.html')
-
     @app.route('/resources')
     def resources():
         return render_template('resources.html')
 
+    @app.route('/self-care')
+    def self_care():
+        return render_template('self_care.html')
+
+    @app.route('/find-help')
+    def find_help_legacy():
+        # Legacy URL — content now lives under /resources. Kept so old
+        # bookmarks and inbound links from search engines don't 404.
+        return redirect(url_for('resources'))
+
     @app.route('/admin')
     def admin_dashboard():
         return render_template('admin.html')
+
+    @app.route('/dashboard')
+    def user_dashboard():
+        return render_template('dashboard.html')
 
     @app.route('/crisis')
     def crisis():

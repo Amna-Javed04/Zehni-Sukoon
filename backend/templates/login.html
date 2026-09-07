@@ -136,7 +136,7 @@ async function submitLogin(e) {
   try {
     const user = await handleLogin(email, pass);
     // Return to the page the user came from (e.g. /screening), else role-based home
-    window.location.href = authNextRedirect() || (user.is_admin ? '/admin' : '/');
+    window.location.href = authNextRedirect() || (user.is_admin ? '/admin' : '/dashboard');
   } catch (err) {
     showFlash(err.message || 'Login failed', 'error');
     btn.disabled = false;
@@ -162,7 +162,7 @@ async function submitSignup(e) {
   btn.textContent = '...';
   try {
     await handleSignup(email, pass);
-    window.location.href = authNextRedirect() || '/';
+    window.location.href = authNextRedirect() || '/dashboard';
   } catch (err) {
     showFlash(err.message || 'Signup failed', 'error');
     btn.disabled = false;

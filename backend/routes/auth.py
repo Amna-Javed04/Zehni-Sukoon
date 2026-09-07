@@ -65,7 +65,7 @@ def signup():
             'id': user.id,
             'email': user.email,
             'is_admin': user.is_admin,
-            'redirect_to': 'home',          # all new users → home
+            'redirect_to': 'dashboard',    # all new users → their dashboard
         }
     }), 201
 
@@ -76,7 +76,7 @@ def login():
     POST /api/auth/login
     Body: { email, password }
     Returns: { token, user: { id, email, is_admin, redirect_to } }
-    redirect_to = 'admin' if is_admin else 'home'
+    redirect_to = 'admin' if is_admin else 'dashboard'
     """
     data = request.get_json(silent=True)
     if not data:
@@ -96,7 +96,7 @@ def login():
             'id': user.id,
             'email': user.email,
             'is_admin': user.is_admin,
-            'redirect_to': 'admin' if user.is_admin else 'home',
+            'redirect_to': 'admin' if user.is_admin else 'dashboard',
         }
     }), 200
 

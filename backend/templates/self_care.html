@@ -1,0 +1,257 @@
+{% extends 'base.html' %}
+{% block title %}خود کی دیکھ بھال — Self-Care Hub{% endblock %}
+{% block meta_description %}ذہنی صحت کے لیے عملی خودِ دیکھ بھال کے طریقے — CBT ورک شیٹس، گراؤنڈنگ مشقیں اور نیند کے معمولات۔{% endblock %}
+
+{% block content %}
+<div class="container section-padding" style="max-width: 900px;">
+  <h2 class="section-title text-center"
+      data-ur="اپنی دیکھ بھال کے طریقے"
+      data-en="Self-Care Techniques">اپنی دیکھ بھال کے طریقے</h2>
+  <p class="section-subtitle text-center"
+     data-ur="تسکینِ قلب، بہتر نیند، اور ذہنی صحت کو بہتر بنانے کے وہ عملی طریقے جو آپ خود آزما سکتے ہیں۔"
+     data-en="Practical grounding, breathing, sleep and thought-work exercises you can try on your own, any time.">تسکینِ قلب، بہتر نیند، اور ذہنی صحت کو بہتر بنانے کے وہ عملی طریقے جو آپ خود آزما سکتے ہیں۔</p>
+
+  <!-- ─── Bridge to real-world help (therapists / hospitals / helplines) ─── -->
+  <a href="{{ url_for('resources') }}" class="self-care-bridge" role="link"
+     aria-label="Looking for real help? Go to Resources">
+    <div class="scb-icon" aria-hidden="true"><i class="fas fa-life-ring"></i></div>
+    <div class="scb-text">
+      <span class="scb-title"
+            data-ur="کیا آپ کسی اصل انسان سے بات کرنا چاہتے ہیں؟"
+            data-en="Need to talk to a real person?">کیا آپ کسی اصل انسان سے بات کرنا چاہتے ہیں؟</span>
+      <span class="scb-sub"
+            data-ur="ہیلپ لائنز، تھراپسٹس اور قریبی ہسپتالوں کے لیے 'وسائل' پر جائیں۔"
+            data-en="Go to Resources for crisis helplines, therapists near you, and hospital psychiatry OPDs.">ہیلپ لائنز، تھراپسٹس اور قریبی ہسپتالوں کے لیے 'وسائل' پر جائیں۔</span>
+    </div>
+    <div class="scb-cta" aria-hidden="true">
+      <span data-ur="کھولیں" data-en="Open">کھولیں</span>
+      <i class="fas fa-arrow-right"></i>
+    </div>
+  </a>
+
+  <!-- Category tabs -->
+  <div class="resource-tabs justify-content-center mt-4">
+    <button class="resource-tab-btn active" onclick="filterCategory('all')"
+            data-ur="تمام طریقے" data-en="All Techniques">تمام طریقے</button>
+    <button class="resource-tab-btn" onclick="filterCategory('cbt')"
+            data-ur="نفسیاتی طریقے (CBT)" data-en="CBT Practices">نفسیاتی طریقے (CBT)</button>
+    <button class="resource-tab-btn" onclick="filterCategory('grounding')"
+            data-ur="پرسکون ہونے کے طریقے" data-en="Grounding Exercises">پرسکون ہونے کے طریقے</button>
+    <button class="resource-tab-btn" onclick="filterCategory('sleep')"
+            data-ur="بہتر نیند کے طریقے" data-en="Sleep Hygiene">بہتر نیند کے طریقے</button>
+  </div>
+
+  <div class="row g-4 mt-2" id="resources-container">
+    <!-- Technique cards will be dynamically populated/filtered here -->
+  </div>
+
+  <!-- ─── Medical disclaimer ──────────────────────────────────────── -->
+  <div class="glass-card disclaimer-card p-3 mt-5" role="note">
+    <div class="disclaimer-title">
+      <i class="fas fa-circle-info" aria-hidden="true"></i>
+      <span data-ur="محفوظ استعمال" data-en="Safe Use">محفوظ استعمال</span>
+    </div>
+    <p class="mb-0"
+       data-ur="یہ خود کی دیکھ بھال کے طریقے مددگار ہیں مگر علاج کا متبادل نہیں۔ اگر تکلیف مسلسل ہے یا بڑھ رہی ہے تو 'وسائل' والے صفحے سے مصدقہ ماہرِ نفسیات یا سائیکیاٹرسٹ سے رابطہ کریں۔ ہنگامی صورت میں Rescue 1122 یا Umang 0311-7786264 پر فون کریں۔"
+       data-en="These self-care techniques help, but they are not a substitute for treatment. If distress persists or worsens, please reach out to a licensed professional via the Resources page. In an emergency, call Rescue 1122 or Umang at 0311-7786264.">یہ خود کی دیکھ بھال کے طریقے مددگار ہیں مگر علاج کا متبادل نہیں۔ اگر تکلیف مسلسل ہے یا بڑھ رہی ہے تو 'وسائل' والے صفحے سے مصدقہ ماہرِ نفسیات یا سائیکیاٹرسٹ سے رابطہ کریں۔ ہنگامی صورت میں Rescue 1122 یا Umang 0311-7786264 پر فون کریں۔</p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Self-care techniques only. Crisis lines, therapist platforms and hospital
+// OPDs live under /resources so users searching for "real help" find one
+// authoritative location instead of two partial ones.
+const SELF_CARE_DATA = [
+  {
+    category: "cbt",
+    title: { ur: "خیالات کا جائزہ (Thought Record)", en: "Thought Record Worksheet" },
+    desc: {
+      ur: "اپنے منفی اور پریشان کن خیالات کو لکھیں اور ان کی سچائی کا حقیقت پسندانہ جائزہ لیں۔",
+      en: "Document your negative thoughts, identify cognitive distortions, and rewrite them with realistic alternatives."
+    },
+    icon: "fa-pencil-alt"
+  },
+  {
+    category: "cbt",
+    title: { ur: "رویہ کی تبدیلی (Behavioral Activation)", en: "Behavioral Activation" },
+    desc: {
+      ur: "روزانہ ایک چھوٹی اور خوشگوار سرگرمی کا انتخاب کریں جو آپ کو خوشی یا طمانیت دے۔",
+      en: "Select and schedule small, meaningful activities daily to improve positive reinforcement and mood."
+    },
+    icon: "fa-calendar-check"
+  },
+  {
+    category: "grounding",
+    title: { ur: "۵-۴-۳-۲-۱ کا طریقہ (5-4-3-2-1 Technique)", en: "5-4-3-2-1 Grounding Method" },
+    desc: {
+      ur: "اپنے ارد گرد ۵ چیزوں کو دیکھیں، ۴ کو چھوئیں، ۳ کی آواز سنیں، ۲ کو سونگھیں، اور ۱ کا ذائقہ چکھیں۔",
+      en: "Notice 5 things you see, 4 you can touch, 3 you hear, 2 you smell, and 1 you can taste to bring focus back to the present."
+    },
+    icon: "fa-anchor"
+  },
+  {
+    category: "grounding",
+    title: { ur: "پٹھوں کو ڈھیلا چھوڑنا (PMR)", en: "Progressive Muscle Relaxation" },
+    desc: {
+      ur: "جسم کے مختلف پٹھوں کو ۵ سیکنڈ کے لیے سخت کریں اور پھر آہستہ آہستہ ڈھیلا چھوڑ دیں۔",
+      en: "Systematically tense and release muscle groups from your toes to your face to release physical stress."
+    },
+    icon: "fa-spa"
+  },
+  {
+    category: "sleep",
+    title: { ur: "نیند کا معمول (Sleep Hygiene)", en: "Establishing a Sleep Routine" },
+    desc: {
+      ur: "روزانہ ایک ہی وقت پر سونے اور جاگنے کی عادت ڈالیں اور بستر پر جانے سے ۱ گھنٹہ پہلے اسکرین کا استعمال بند کریں۔",
+      en: "Keep consistent sleep-wake times and shut off screens 60 minutes before bedtime to support deep rest."
+    },
+    icon: "fa-bed"
+  },
+  {
+    category: "sleep",
+    title: { ur: "دماغ کو خالی کریں (Brain Dump)", en: "Pre-Sleep Brain Dump" },
+    desc: {
+      ur: "سونے سے پہلے اپنی تمام تر پریشانیاں یا اگلے دن کے کام کاغذ پر لکھ دیں تاکہ دماغ پرسکون ہو سکے۔",
+      en: "Write down your lingering thoughts, fears, or to-do lists before sleeping to clear mental clutter."
+    },
+    icon: "fa-brain"
+  }
+];
+
+function filterCategory(cat) {
+  const buttons = document.querySelectorAll('.resource-tab-btn');
+  buttons.forEach(btn => btn.classList.remove('active'));
+  if (window.event && event.target) event.target.classList.add('active');
+  renderSelfCare(cat);
+}
+
+function renderSelfCare(category = 'all') {
+  const lang = getCurrentLang();
+  const isUr = lang === 'ur';
+  const container = document.getElementById('resources-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const filtered = category === 'all'
+    ? SELF_CARE_DATA
+    : SELF_CARE_DATA.filter(r => r.category === category);
+
+  filtered.forEach(res => {
+    const titleText = isUr ? res.title.ur : res.title.en;
+    const descText  = isUr ? res.desc.ur  : res.desc.en;
+
+    const card = document.createElement('div');
+    card.className = 'col-md-6 fade-in-up';
+    card.innerHTML = `
+      <div class="glass-card resource-card p-4 h-100 d-flex flex-column gap-3">
+        <div class="d-flex align-items-center gap-3">
+          <div class="resource-icon"><i class="fas ${res.icon}"></i></div>
+          <h4 class="mb-0 font-weight-bold" style="font-size:1.1rem; color:var(--brand-green-dark);">${titleText}</h4>
+        </div>
+        <p class="text-muted mb-0" style="font-size:0.92rem; line-height:1.65;">${descText}</p>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+// Re-render on language toggle so card titles & descriptions swap cleanly.
+if (typeof MutationObserver !== 'undefined') {
+  let currentCategory = 'all';
+  document.querySelectorAll('.resource-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const on = (btn.getAttribute('onclick') || '');
+      const m = on.match(/filterCategory\(['"]([^'"]+)['"]\)/);
+      if (m) currentCategory = m[1];
+    });
+  });
+  new MutationObserver(() => renderSelfCare(currentCategory))
+    .observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+}
+
+document.addEventListener('DOMContentLoaded', () => renderSelfCare('all'));
+
+window.filterCategory = filterCategory;
+window.renderSelfCare = renderSelfCare;
+</script>
+
+<style>
+.resource-card {
+  border: 1px solid rgba(131,151,145,0.2);
+  transition: var(--transition);
+}
+.resource-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--brand-green);
+}
+.resource-icon {
+  width: 48px; height: 48px;
+  background: rgba(101,88,122,0.12);
+  color: var(--brand-lavender);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.2rem; flex-shrink: 0;
+}
+
+/* ─── "Need real help?" bridge to /resources ─────────────────────── */
+.self-care-bridge {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.2rem;
+  margin-top: .5rem;
+  border-radius: 16px;
+  border: 1px solid rgba(101,88,122,.28);
+  background: linear-gradient(135deg, rgba(101,88,122,.10), rgba(78,99,94,.08));
+  text-decoration: none;
+  color: inherit;
+  transition: transform .12s ease, border-color .12s ease, box-shadow .12s ease;
+}
+.self-care-bridge:hover {
+  transform: translateY(-2px);
+  border-color: var(--brand-lavender, #65587a);
+  box-shadow: 0 8px 20px rgba(31,41,39,.10);
+}
+.scb-icon {
+  width: 44px; height: 44px; border-radius: 12px;
+  background: rgba(101,88,122,.18); color: var(--brand-lavender, #65587a);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.15rem;
+}
+.scb-text { display: flex; flex-direction: column; min-width: 0; }
+.scb-title { font-weight: 700; font-size: .98rem; margin-bottom: .15rem; }
+.scb-sub   { font-size: .86rem; opacity: .82; line-height: 1.5; }
+.scb-cta {
+  display: inline-flex; align-items: center; gap: .4rem;
+  font-weight: 700; font-size: .88rem;
+  color: var(--brand-lavender, #65587a);
+}
+[dir="rtl"] .scb-cta i { transform: rotate(180deg); }
+@media (max-width: 560px) {
+  .self-care-bridge { grid-template-columns: auto 1fr; }
+  .scb-cta { grid-column: 1 / -1; justify-self: start; }
+}
+
+/* ─── Disclaimer ─────────────────────────────────────────────────── */
+.disclaimer-card {
+  background: linear-gradient(135deg, rgba(101,88,122,.08), rgba(78,99,94,.06));
+  border: 1px dashed rgba(131,151,145,.45);
+  font-size: .9rem;
+}
+.disclaimer-title {
+  display: flex; align-items: center; gap: .5rem;
+  font-weight: 700; margin-bottom: .35rem;
+  color: var(--brand-lavender, #65587a);
+}
+
+/* ─── Dark theme ─────────────────────────────────────────────────── */
+[data-theme="dark"] .self-care-bridge { background: linear-gradient(135deg, rgba(101,88,122,.22), rgba(78,99,94,.14)); border-color: rgba(255,255,255,.14); color: #e5e7eb; }
+[data-theme="dark"] .self-care-bridge:hover { border-color: #a597bd; }
+[data-theme="dark"] .scb-icon  { background: rgba(255,255,255,.10); color: #d1d5db; }
+[data-theme="dark"] .scb-cta   { color: #d1d5db; }
+</style>
+{% endblock %}

@@ -1,0 +1,713 @@
+{% extends 'base.html' %}
+{% block title %}صارف ڈیش بورڈ — Your Dashboard{% endblock %}
+
+{% block content %}
+<div class="container section-padding">
+  <!-- Wrapper hidden until requireUser() confirms a real account (avoids flash) -->
+  <div id="dash-wrapper" class="d-none">
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+      <div>
+        <h2 class="section-title mb-1"
+            data-ur="آپ کا ڈیش بورڈ"
+            data-en="Your Dashboard">آپ کا ڈیش بورڈ</h2>
+        <p class="text-muted mb-0"
+           data-ur="آپ کی تمام جانچ کے ریکارڈ صرف آپ کے کھاتے سے منسلک ہیں۔ کوئی اور انہیں نہیں دیکھ سکتا۔"
+           data-en="Every record below belongs only to your account. No one else — not even admins — sees your answers.">آپ کی تمام جانچ کے ریکارڈ صرف آپ کے کھاتے سے منسلک ہیں۔ کوئی اور انہیں نہیں دیکھ سکتا۔</p>
+      </div>
+      <a href="{{ url_for('screening') }}" class="btn btn-zs-primary"
+         data-ur="نئی جانچ شروع کریں"
+         data-en="Start a new check-in">نئی جانچ شروع کریں</a>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="glass-card filter-bar">
+      <div class="filter-field">
+        <label for="filter-type" data-ur="قسم" data-en="Type">قسم</label>
+        <select id="filter-type" class="form-control-zs">
+          <option value="all"  data-ur="تمام ٹیسٹ"       data-en="All assessments">تمام ٹیسٹ</option>
+          <option value="phq9" data-ur="PHQ-9 (مزاج)"     data-en="PHQ-9 (Mood)">PHQ-9 (مزاج)</option>
+          <option value="gad7" data-ur="GAD-7 (گھبراہٹ)"  data-en="GAD-7 (Anxiety)">GAD-7 (گھبراہٹ)</option>
+        </select>
+      </div>
+      <div class="filter-field">
+        <label for="filter-start" data-ur="شروع کی تاریخ" data-en="From">شروع کی تاریخ</label>
+        <input type="date" id="filter-start" class="form-control-zs">
+      </div>
+      <div class="filter-field">
+        <label for="filter-end" data-ur="آخری تاریخ" data-en="To">آخری تاریخ</label>
+        <input type="date" id="filter-end" class="form-control-zs">
+      </div>
+      <div class="filter-actions">
+        <button type="button" class="btn btn-zs-primary" onclick="loadDashboard()"
+                data-ur="لاگو کریں" data-en="Apply">لاگو کریں</button>
+        <button type="button" class="btn btn-zs-outline" onclick="resetFilters()"
+                data-ur="دوبارہ ترتیب" data-en="Reset">دوبارہ ترتیب</button>
+      </div>
+    </div>
+
+    <!-- KPI cards -->
+    <div class="admin-cards-grid mb-4">
+      <div class="glass-card stat-card">
+        <div class="stat-value" id="stat-total">0</div>
+        <div class="stat-label" data-ur="کل چیک ان" data-en="Total check-ins">کل چیک ان</div>
+      </div>
+      <div class="glass-card stat-card">
+        <div class="stat-value" id="stat-latest-score">—</div>
+        <div class="stat-label" id="stat-latest-score-label"
+               data-ur="حالی سکور" data-en="Latest score">حالی سکور</div>
+      </div>
+      <div class="glass-card stat-card">
+        <div class="stat-value stat-value-sm" id="stat-latest-severity">—</div>
+        <div class="stat-label" data-ur="حالی شدت" data-en="Latest severity">حالی شدت</div>
+      </div>
+      <div class="glass-card stat-card">
+        <div class="stat-value stat-value-sm" id="stat-direction">—</div>
+        <div class="stat-label" data-ur="رجحان (بہتری / بدتری)" data-en="Overall trend">رجحان (بہتری / بدتری)</div>
+      </div>
+    </div>
+
+    <!-- Empty state -->
+    <div id="empty-state" class="glass-card empty-state d-none">
+      <i class="fas fa-seedling empty-icon" aria-hidden="true"></i>
+      <h4 data-ur="ابھی تک کوئی جانچ ریکارڈ نہیں" data-en="No check-ins yet">ابھی تک کوئی جانچ ریکارڈ نہیں</h4>
+      <p data-ur="اپنا پہلا جائزہ لیں — یہ دو منٹ لیتا ہے اور یہاں گراف اور تجاویز نظر آئیں گی۔"
+         data-en="Take your first screening — it takes about two minutes and your charts and tips will appear here.">اپنا پہلا جائزہ لیں — یہ دو منٹ لیتا ہے اور یہاں گراف اور تجاویز نظر آئیں گی۔</p>
+      <a href="{{ url_for('screening') }}" class="btn btn-zs-primary"
+         data-ur="جانچ شروع کریں" data-en="Start screening">جانچ شروع کریں</a>
+    </div>
+
+    <!-- Charts -->
+    <div id="charts-wrap" class="admin-charts-grid d-none">
+      <div class="glass-card p-4">
+        <h4 class="mb-3 text-center"
+            data-ur="سکور کا رجحان (وقت کے ساتھ)"
+            data-en="Score Trend Over Time">سکور کا رجحان (وقت کے ساتھ)</h4>
+        <div class="chart-container-trend"><canvas id="chart-trend"></canvas></div>
+      </div>
+      <div class="glass-card p-4">
+        <h4 class="mb-3 text-center"
+            data-ur="شدت کی تقسیم"
+            data-en="Severity Distribution">شدت کی تقسیم</h4>
+        <div class="chart-container-trend"><canvas id="chart-severity"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Analysis card -->
+    <div id="analysis-card" class="glass-card p-4 mt-4 d-none">
+      <h4 class="mb-3" data-ur="تجزیہ" data-en="Analysis">تجزیہ</h4>
+      <div id="analysis-body"></div>
+    </div>
+
+    <!-- Tips / resources card -->
+    <div id="tips-card" class="glass-card p-4 mt-4 d-none">
+      <h4 class="mb-2" data-ur="آپ کے لیے تجاویز اور وسائل" data-en="Tips & Resources For You">آپ کے لیے تجاویز اور وسائل</h4>
+      <p id="tips-summary" class="tips-summary mb-3"></p>
+      <ul id="tips-list" class="tips-list"></ul>
+      <div class="tips-cta">
+        <a href="{{ url_for('resources') }}" class="btn btn-zs-outline"
+           data-ur="تمام وسائل دیکھیں" data-en="Browse all resources">تمام وسائل دیکھیں</a>
+        <button type="button" class="btn btn-zs-primary" onclick="CompanionWidget.open()"
+           data-ur="ہمدم سے بات کریں" data-en="Talk to Humdum">ہمدم سے بات کریں</button>
+      </div>
+      <div id="crisis-banner" class="crisis-banner d-none">
+        <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
+        <span data-ur="آپ کی حالیہ جانچ میں خود کو نقصان کے خیال کا اشارہ تھا۔ براہ کرم ابھی کسی سے بات کریں۔"
+              data-en="A recent screening included a self-harm signal. Please reach out to someone right now.">آپ کی حالیہ جانچ میں خود کو نقصان کے خیال کا اشارہ تھا۔ براہ کرم ابھی کسی سے بات کریں۔</span>
+        <a href="{{ url_for('crisis') }}" class="crisis-link"
+           data-ur="بحران کے وسائل دیکھیں" data-en="See crisis resources">بحران کے وسائل دیکھیں</a>
+      </div>
+    </div>
+
+    <!-- History table -->
+    <div class="glass-card p-4 mt-4">
+      <h4 class="mb-3" data-ur="پچھلی جانچ کی ریکارڈز" data-en="Previous Test Records">پچھلی جانچ کی ریکارڈز</h4>
+      <div class="table-wrap">
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th data-ur="تاریخ" data-en="Date">تاریخ</th>
+              <th data-ur="قسم" data-en="Type">قسم</th>
+              <th data-ur="سکور" data-en="Score">سکور</th>
+              <th data-ur="شدت" data-en="Severity">شدت</th>
+              <th data-ur="الرٹ" data-en="Alert">الرٹ</th>
+            </tr>
+          </thead>
+          <tbody id="history-body">
+            <tr><td colspan="5" class="muted-row" data-ur="لوڈ ہو رہا ہے…" data-en="Loading…">لوڈ ہو رہا ہے…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p id="history-caption" class="history-caption"></p>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let lastOverview = null;
+let lastHistory  = null;
+let trendChartInstance = null;
+let severityChartInstance = null;
+
+const brandColors = {
+  green:        '#4e635e',
+  greenLight:   '#839791',
+  lavender:     '#65587a',
+  lavenderLight:'#e0d9eb',
+  dark:         '#374744',
+  charcoal:     '#1b1c1c',
+  cream:        '#fbf9f8',
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (!requireUser()) return;
+  document.getElementById('dash-wrapper').classList.remove('d-none');
+  loadDashboard();
+
+  // Re-render dynamic content when the language flips.
+  new MutationObserver(() => {
+    if (lastOverview) renderOverview(lastOverview);
+    if (lastHistory)  renderHistory(lastHistory);
+  }).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+});
+
+function resetFilters() {
+  document.getElementById('filter-type').value = 'all';
+  document.getElementById('filter-start').value = '';
+  document.getElementById('filter-end').value = '';
+  loadDashboard();
+}
+
+async function loadDashboard() {
+  const type  = document.getElementById('filter-type').value;
+  const start = document.getElementById('filter-start').value;
+  const end   = document.getElementById('filter-end').value;
+  try {
+    const [ov, hist] = await Promise.all([
+      Api.user.overview({ type, start, end }),
+      Api.user.history({ type, start, end, limit: 100 }),
+    ]);
+    lastOverview = ov;
+    lastHistory  = hist.results;
+    renderOverview(ov);
+    renderHistory(hist.results, { total: hist.total });
+    applyLanguage(getCurrentLang());
+  } catch (err) {
+    showFlash(err.message || (getCurrentLang() === 'ur' ? 'ڈیٹا لوڈ نہیں ہو سکا' : 'Could not load dashboard'), 'error');
+  }
+}
+
+// ── KPI + section visibility ─────────────────────────────────────────
+function renderOverview(ov) {
+  const lang = getCurrentLang();
+  document.getElementById('stat-total').textContent = ov.total_tests;
+
+  const isEmpty = (ov.total_tests || 0) === 0;
+  document.getElementById('empty-state').classList.toggle('d-none', !isEmpty);
+  document.getElementById('charts-wrap').classList.toggle('d-none', isEmpty);
+  document.getElementById('analysis-card').classList.toggle('d-none', isEmpty);
+  document.getElementById('tips-card').classList.toggle('d-none', isEmpty);
+
+  if (isEmpty) return;
+
+  // Latest score line — include the assessment type in the sublabel
+  const latest = ov.latest || {};
+  document.getElementById('stat-latest-score').textContent = latest.score ?? '—';
+  const scoreLabelEl = document.getElementById('stat-latest-score-label');
+  const typeTag = latest.type === 'phq9' ? 'PHQ-9' : latest.type === 'gad7' ? 'GAD-7' : '';
+  scoreLabelEl.setAttribute('data-ur', typeTag ? `حالی سکور (${typeTag})` : 'حالی سکور');
+  scoreLabelEl.setAttribute('data-en', typeTag ? `Latest score (${typeTag})` : 'Latest score');
+  scoreLabelEl.textContent = lang === 'ur' ? scoreLabelEl.getAttribute('data-ur') : scoreLabelEl.getAttribute('data-en');
+
+  // Severity pill (as text)
+  const sevEl = document.getElementById('stat-latest-severity');
+  sevEl.innerHTML = '';
+  sevEl.appendChild(sevBadge(latest.severity));
+
+  // Direction
+  const dirEl = document.getElementById('stat-direction');
+  dirEl.innerHTML = directionBadge(ov.situation, lang);
+
+  // Crisis banner
+  document.getElementById('crisis-banner').classList.toggle('d-none', !ov.has_crisis);
+
+  // Charts
+  renderTrendChart(ov.trend || []);
+  renderSeverityChart(ov.severity_distribution || {});
+
+  // Analysis + tips
+  renderAnalysis(ov, lang);
+  renderTips(ov, lang);
+}
+
+function sevBadge(sev) {
+  const span = document.createElement('span');
+  const key = (sev || 'Unknown').toLowerCase().replace(/\s+/g, '-');
+  span.className = `sev-badge sev-${key}`;
+  const map = {
+    ur: {
+      'minimal':            'موثر نہیں',
+      'mild':               'ہلکا',
+      'moderate':           'درمیانہ',
+      'moderately-severe':  'درمیانہ شدید',
+      'severe':             'شدید',
+      'unknown':            'نامعلوم',
+    },
+    en: {
+      'minimal':           'Minimal',
+      'mild':              'Mild',
+      'moderate':          'Moderate',
+      'moderately-severe': 'Moderately Severe',
+      'severe':            'Severe',
+      'unknown':           'Unknown',
+    },
+  };
+  const lang = getCurrentLang();
+  span.textContent = (map[lang] || map.en)[key] || (sev || '—');
+  return span;
+}
+
+function directionBadge(situation, lang) {
+  const icon = {
+    improving:  'fa-arrow-trend-down',
+    worsening:  'fa-arrow-trend-up',
+    stable:     'fa-arrow-right-arrow-left',
+    new:        'fa-seedling',
+  }[situation] || 'fa-circle-question';
+  const cls = {
+    improving: 'dir-good',
+    worsening: 'dir-bad',
+    stable:    'dir-neutral',
+    new:       'dir-neutral',
+  }[situation] || 'dir-neutral';
+  const label = {
+    ur: { improving: 'بہتری ہو رہی ہے', worsening: 'دقت بڑھ رہی ہے', stable: 'مستقل', new: 'ابھی نیا' },
+    en: { improving: 'Improving',        worsening: 'Worsening',       stable: 'Stable',  new: 'New' },
+  }[lang] || {};
+  const text = label[situation] || (lang === 'ur' ? '—' : '—');
+  return `<i class="fas ${icon}" aria-hidden="true"></i> ${text}`;
+}
+
+// ── Charts ───────────────────────────────────────────────────────────
+function renderTrendChart(trend) {
+  const lang = getCurrentLang();
+  const labels = trend.map(t => {
+    const parts = (t.date || '').split('-');
+    return parts.length === 3 ? `${parts[1]}/${parts[2]}` : t.date;
+  });
+  const phq = trend.map(t => t.phq9);
+  const gad = trend.map(t => t.gad7);
+
+  if (trendChartInstance) trendChartInstance.destroy();
+  const ctx = document.getElementById('chart-trend').getContext('2d');
+  trendChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'PHQ-9',
+          data: phq,
+          borderColor: brandColors.lavender,
+          backgroundColor: 'rgba(101,88,122,0.15)',
+          borderWidth: 3, tension: 0.3, spanGaps: true,
+          pointBackgroundColor: brandColors.lavender, pointRadius: 4,
+        },
+        {
+          label: 'GAD-7',
+          data: gad,
+          borderColor: brandColors.green,
+          backgroundColor: 'rgba(78,99,94,0.15)',
+          borderWidth: 3, tension: 0.3, spanGaps: true,
+          pointBackgroundColor: brandColors.green, pointRadius: 4,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12 } },
+        tooltip: {
+          callbacks: {
+            title: (items) => items[0] ? `${lang === 'ur' ? 'تاریخ' : 'Date'}: ${trend[items[0].dataIndex]?.date || ''}` : '',
+          },
+        },
+      },
+      scales: {
+        y: { beginAtZero: true, grid: { color: 'rgba(131,151,145,0.1)' } },
+        x: { grid: { display: false } },
+      },
+    },
+  });
+}
+
+function renderSeverityChart(dist) {
+  const labels = Object.keys(dist);
+  const values = Object.values(dist);
+  const palette = [
+    brandColors.greenLight, brandColors.green,
+    brandColors.lavenderLight, brandColors.lavender,
+    brandColors.dark,
+  ];
+  if (severityChartInstance) severityChartInstance.destroy();
+  const ctx = document.getElementById('chart-severity').getContext('2d');
+  severityChartInstance = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: labels.map((_, i) => palette[i % palette.length]),
+        borderWidth: 2,
+        borderColor: brandColors.cream,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12 } } },
+    },
+  });
+}
+
+// ── Analysis narrative ───────────────────────────────────────────────
+function renderAnalysis(ov, lang) {
+  const wrap = document.getElementById('analysis-body');
+  wrap.innerHTML = '';
+  const analysis = ov.analysis || {};
+
+  // Overall situation sentence first
+  const overall = document.createElement('p');
+  overall.className = 'analysis-overall';
+  overall.textContent = overallSentence(ov.situation, lang);
+  wrap.appendChild(overall);
+
+  // Per-type details
+  for (const [t, info] of Object.entries(analysis)) {
+    const block = document.createElement('div');
+    block.className = 'analysis-type';
+    const typeName = t === 'phq9' ? 'PHQ-9' : t === 'gad7' ? 'GAD-7' : t;
+    const label = lang === 'ur'
+      ? (t === 'phq9' ? 'مزاج' : t === 'gad7' ? 'گھبراہٹ' : '')
+      : (t === 'phq9' ? 'Mood' : t === 'gad7' ? 'Anxiety' : '');
+    const h = document.createElement('strong');
+    h.textContent = `${typeName}${label ? ' — ' + label : ''}`;
+    block.appendChild(h);
+
+    const p = document.createElement('p');
+    p.textContent = typeSentence(typeName, info, lang);
+    block.appendChild(p);
+
+    wrap.appendChild(block);
+  }
+}
+
+function overallSentence(situation, lang) {
+  const map = {
+    ur: {
+      improving:  'اچھی خبر: آپ کے سکور میں وقت کے ساتھ بہتری آئی ہے۔ اپنی دیکھ بھال جاری رکھیں۔',
+      worsening:  'ذہن میں رکھیں: حال ہی میں آپ کے سکور بڑھے ہیں۔ یہ مشکل وقت ہے — کسی سے بات کرنا مددگار ہو سکتا ہے۔',
+      stable:     'آپ کا رجحان نسبتاً مستقل ہے۔ معمول برقرار رکھیں اور باقاعدہ جانچ جاری رکھیں۔',
+      new:        'ابھی بہت کم ڈیٹا ہے۔ چند اور چیک ان کے بعد رجحان واضح ہوگا۔',
+    },
+    en: {
+      improving:  'Good news — your scores have trended downward over time. Keep up the self-care.',
+      worsening:  'Heads up — your recent scores have risen. This is a hard stretch; talking to someone may help.',
+      stable:     'Your trend has been relatively steady. Keep the routine and continue regular check-ins.',
+      new:        'Not enough data yet. The picture will sharpen after a few more check-ins.',
+    },
+  };
+  return (map[lang] || map.en)[situation] || (lang === 'ur' ? '—' : '—');
+}
+
+function typeSentence(typeName, info, lang) {
+  if (!info) return '';
+  if ((info.count || 0) < 2) {
+    return lang === 'ur'
+      ? `${typeName}: صرف ایک چیک ان ریکارڈ ہے۔ موازنہ کے لیے کم از کم دو درکار ہیں۔`
+      : `${typeName}: only one check-in recorded — at least two are needed to compare.`;
+  }
+  const dir = {
+    improving:  lang === 'ur' ? 'بہتری' : 'improving',
+    worsening:  lang === 'ur' ? 'بدتری' : 'worsening',
+    stable:     lang === 'ur' ? 'مستقل' : 'stable',
+    insufficient_data: lang === 'ur' ? 'ناکافی ڈیٹا' : 'insufficient data',
+  }[info.direction] || '—';
+  const delta = info.trend_delta ?? 0;
+  const sign  = delta > 0 ? '+' : '';
+  const latest = info.latest_score ?? '—';
+  const avg    = info.average_score ?? '—';
+  const best   = info.best_score ?? '—';
+  const worst  = info.worst_score ?? '—';
+  const sev    = info.latest_severity || '—';
+  if (lang === 'ur') {
+    return `${typeName}: کل ${info.count} چیک ان، حالیہ سکور ${latest} (${sev})۔ اوسط ${avg}، بہترین ${best}، بدترین ${worst}۔ رجحان: ${dir} (${sign}${delta})۔`;
+  }
+  return `${typeName}: ${info.count} check-ins. Latest score ${latest} (${sev}). Average ${avg}, best ${best}, worst ${worst}. Trend: ${dir} (${sign}${delta}).`;
+}
+
+// ── Tips based on severity + situation ───────────────────────────────
+function renderTips(ov, lang) {
+  const list = document.getElementById('tips-list');
+  const summary = document.getElementById('tips-summary');
+  list.innerHTML = '';
+
+  const sev = (ov.latest?.severity || '').toLowerCase();
+  const type = ov.latest?.type;
+  const situation = ov.situation;
+
+  const summaryText = {
+    ur: {
+      crisis: 'بحران کی نشاندہی — براہ کرم ابھی رابطہ کریں۔',
+      severe: 'اس وقت آپ کی حالت شدید لگ رہی ہے۔ پیشہ ور مدد انتہائی اہم ہے۔',
+      'moderately severe': 'درمیانہ تا شدید درجات ہیں۔ کسی ماہر سے رابطہ مفید ہوگا۔',
+      moderate: 'درمیانہ درجات — ساختہ عادات اور کسی سے بات دونوں مدد کر سکتے ہیں۔',
+      mild: 'ہلکہ درجات — معمولی اصلاحات بہتری لا سکتی ہیں۔',
+      minimal: 'حالت بہتر ہے۔ صحت مند معمول جاری رکھیں۔',
+      '': 'شروع کرنے کے لیے ایک بنیادی تجویز —',
+    },
+    en: {
+      crisis: 'A crisis signal was flagged — please reach out today.',
+      severe: 'Your most recent screening suggests severe symptoms. Professional support is very important right now.',
+      'moderately severe': 'Moderately severe range — a session with a counsellor would likely help.',
+      moderate: 'Moderate range — structured routines and talking to someone both make a difference.',
+      mild: 'Mild range — small, consistent adjustments can turn things around.',
+      minimal: 'In a good place. Keep up the healthy baseline.',
+      '': 'A starting suggestion —',
+    },
+  };
+  const key = sev || '';
+  const map = summaryText[lang] || summaryText.en;
+  summary.textContent = map[key] || map[''];
+
+  const tips = pickTips(sev, situation, type, lang);
+  for (const t of tips) {
+    const li = document.createElement('li');
+    li.innerHTML = `<i class="fas ${t.icon || 'fa-leaf'}" aria-hidden="true"></i> ${t.text}`;
+    list.appendChild(li);
+  }
+}
+
+function pickTips(sev, situation, type, lang) {
+  const T = {
+    ur: {
+      breathing:   { icon: 'fa-wind', text: 'دن میں دو بار ۴-۷-۸ سانس کی مشق (۴ سیکنڈ اندر، ۷ روکیں، ۸ باہر)۔' },
+      sleep:       { icon: 'fa-moon', text: 'مستقل نیند کا وقت مقرر کریں — سونے سے ایک گھنٹہ پہلے اسکرین بند۔' },
+      walk:        { icon: 'fa-person-walking', text: 'روزانہ کم از کم ۲۰ منٹ کی تیز چہل قدمی — مزاج پر ماپے جانے والا اثر۔' },
+      journal:     { icon: 'fa-pen', text: 'رات کو تین سطور میں دن کا خلاصہ لکھیں — سوچ کے نمونے واضح ہوتے ہیں۔' },
+      cbt:         { icon: 'fa-brain', text: 'CBT ورک شیٹ آزمائیں: منفی خیال، اس کی تائید اور تردید، پھر متوازن خیال لکھیں۔' },
+      professional:{ icon: 'fa-user-doctor', text: 'ایک مصدقہ ماہرِ نفسیات یا سائیکیاٹرسٹ سے رابطہ کریں۔ یہ طاقت کی علامت ہے۔' },
+      helpline:    { icon: 'fa-phone', text: 'ایمرجنسی: Umang — 0311-7786264 یا Rescue 1122۔' },
+      talk:        { icon: 'fa-comments', text: 'کسی قریبی شخص سے بات شیئر کریں — بوجھ بانٹنے سے ہلکا ہوتا ہے۔' },
+      routine:     { icon: 'fa-calendar-check', text: 'چھوٹے قابلِ تحقيق اہداف: بستر بنانا، وضو، ایک کھانا وقت پر۔' },
+      companion:   { icon: 'fa-robot', text: 'ذہنی سکون کے ساتھی سے آج کی بات چیت کریں — ۲۴/۷۔' },
+      continue:    { icon: 'fa-chart-line', text: 'ہفتے میں ایک بار چیک ان جاری رکھیں تاکہ رجحان واضح رہے۔' },
+      celebrate:   { icon: 'fa-medal', text: 'چھوٹی کامیابیاں نوٹ کریں — بہتری کو پہچاننا رفتار بڑھاتا ہے۔' },
+      ground:      { icon: 'fa-spa', text: '5-4-3-2-1 گرؤنڈنگ: پانچ چیزیں دیکھیں، چار چھوئیں، تین سنیں، دو سونگھیں، ایک ذائقہ۔' },
+      limit:       { icon: 'fa-bell-slash', text: 'اخبارات اور سوشل میڈیا کا وقت کم کریں — گھبراہٹ بڑھاتی ہیں۔' },
+    },
+    en: {
+      breathing:   { icon: 'fa-wind', text: 'Try 4-7-8 breathing twice today (inhale 4s, hold 7s, exhale 8s).' },
+      sleep:       { icon: 'fa-moon', text: 'Set a consistent sleep window; screens off one hour before bed.' },
+      walk:        { icon: 'fa-person-walking', text: 'At least 20 minutes of brisk walking daily — measurable mood benefit.' },
+      journal:     { icon: 'fa-pen', text: 'Write a three-line summary of the day at night; patterns surface.' },
+      cbt:         { icon: 'fa-brain', text: 'Try a CBT worksheet: negative thought, evidence for/against, balanced reframe.' },
+      professional:{ icon: 'fa-user-doctor', text: 'Reach out to a licensed psychologist or psychiatrist. It is a sign of strength.' },
+      helpline:    { icon: 'fa-phone', text: 'Emergency: Umang — 0311-7786264 or Rescue 1122.' },
+      talk:        { icon: 'fa-comments', text: 'Share how you feel with one trusted person — burdens lighten when split.' },
+      routine:     { icon: 'fa-calendar-check', text: 'Set tiny achievable goals: make the bed, wudu, one meal on time.' },
+      companion:   { icon: 'fa-robot', text: 'Talk to the Zehni Sukoon companion tonight — available 24/7.' },
+      continue:    { icon: 'fa-chart-line', text: 'Keep a weekly check-in so the trend stays visible.' },
+      celebrate:   { icon: 'fa-medal', text: 'Notice small wins — acknowledging progress sustains momentum.' },
+      ground:      { icon: 'fa-spa', text: '5-4-3-2-1 grounding: five things you see, four you touch, three you hear, two you smell, one you taste.' },
+      limit:       { icon: 'fa-bell-slash', text: 'Reduce news and social media scroll — they amplify anxiety.' },
+    },
+  };
+  const dict = T[lang] || T.en;
+
+  if (sev.includes('crisis') || situation === 'crisis') {
+    return [dict.helpline, dict.professional, dict.talk, dict.breathing];
+  }
+  if (sev.startsWith('severe') || situation === 'worsening' && sev.includes('moderate')) {
+    return [dict.professional, dict.talk, dict.companion, dict.routine, dict.breathing];
+  }
+  if (sev.includes('moderate')) {
+    return [dict.cbt, dict.walk, dict.journal, dict.companion, dict.routine];
+  }
+  if (sev === 'mild') {
+    return [dict.breathing, dict.walk, dict.sleep, dict.journal, dict.talk];
+  }
+  if (sev === 'minimal') {
+    return [dict.continue, dict.celebrate, dict.sleep, dict.walk];
+  }
+  // Fallback (no severity yet / new user)
+  return [dict.routine, dict.walk, dict.sleep, dict.journal];
+}
+
+// ── History table ────────────────────────────────────────────────────
+function renderHistory(results, meta = {}) {
+  const tbody = document.getElementById('history-body');
+  const caption = document.getElementById('history-caption');
+  tbody.innerHTML = '';
+  const lang = getCurrentLang();
+
+  if (!results || results.length === 0) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = 5;
+    td.className = 'muted-row';
+    td.textContent = lang === 'ur' ? 'اس فلٹر میں کوئی ریکارڈ نہیں۔' : 'No records for this filter.';
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+    caption.textContent = '';
+    return;
+  }
+
+  for (const r of results) {
+    const tr = document.createElement('tr');
+    tr.appendChild(cell(formatDate(r.date, lang)));
+    tr.appendChild(cell(r.type === 'phq9' ? 'PHQ-9' : r.type === 'gad7' ? 'GAD-7' : (r.type || '—')));
+    tr.appendChild(cell(String(r.score ?? '—')));
+    const sevTd = document.createElement('td');
+    sevTd.appendChild(sevBadge(r.severity));
+    tr.appendChild(sevTd);
+    const alertTd = document.createElement('td');
+    if (r.crisis) {
+      alertTd.innerHTML = `<span class="crisis-chip"><i class="fas fa-triangle-exclamation"></i> ${lang === 'ur' ? 'بحران اشارہ' : 'Crisis signal'}</span>`;
+    } else {
+      alertTd.innerHTML = `<span class="muted-row">—</span>`;
+    }
+    tr.appendChild(alertTd);
+    tbody.appendChild(tr);
+  }
+
+  if (typeof meta.total === 'number') {
+    caption.textContent = lang === 'ur'
+      ? `کل ${meta.total} ریکارڈ — ${results.length} دکھائے گئے۔`
+      : `${meta.total} total — showing ${results.length}.`;
+  }
+}
+
+function cell(text) {
+  const td = document.createElement('td');
+  td.textContent = text;
+  return td;
+}
+
+function formatDate(iso, lang) {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso);
+    if (isNaN(d)) return iso;
+    return d.toLocaleDateString(lang === 'ur' ? 'ur-PK' : 'en-GB', { year: 'numeric', month: 'short', day: 'numeric' })
+      + ' · ' + d.toLocaleTimeString(lang === 'ur' ? 'ur-PK' : 'en-GB', { hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return iso;
+  }
+}
+
+// Expose to inline onclick handlers
+window.loadDashboard = loadDashboard;
+window.resetFilters  = resetFilters;
+</script>
+
+<style>
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-end;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+}
+.filter-field { display: flex; flex-direction: column; gap: .35rem; min-width: 180px; }
+.filter-field label { font-size: .85rem; font-weight: 600; opacity: .85; }
+.filter-field .form-control-zs { width: 100%; }
+.filter-actions { display: flex; gap: .6rem; align-items: center; margin-inline-start: auto; }
+
+/* Reuse admin-card grid styles from admin.html if present; declare locally so this
+   page works even when admin.html styles aren't loaded. */
+.admin-cards-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
+@media (min-width: 576px) { .admin-cards-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 992px) { .admin-cards-grid { grid-template-columns: repeat(4, 1fr); } }
+
+.admin-charts-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; }
+@media (min-width: 768px) { .admin-charts-grid { grid-template-columns: 1fr 1fr; } }
+
+.chart-container-trend { position: relative; height: 320px; width: 100%; }
+
+.stat-value-sm { font-size: 1.4rem !important; line-height: 1.3 !important; }
+.stat-value .sev-badge, .stat-value-sm .sev-badge { font-size: .95rem; padding: .3rem .8rem; }
+
+.dir-good      { color: #065f46; }
+.dir-bad       { color: #b91c1c; }
+.dir-neutral   { color: #4b5563; }
+[data-theme="dark"] .dir-good    { color: #6ee7b7; }
+[data-theme="dark"] .dir-bad     { color: #fca5a5; }
+[data-theme="dark"] .dir-neutral { color: #d1d5db; }
+
+.empty-state { text-align: center; padding: 3rem 1.5rem; margin-bottom: 2rem; }
+.empty-icon { font-size: 3rem; color: #839791; display: block; margin-bottom: 1rem; }
+.empty-state h4 { margin-bottom: .6rem; }
+.empty-state p { opacity: .8; margin-bottom: 1.5rem; }
+
+.analysis-overall { font-size: 1.05rem; font-weight: 600; margin-bottom: 1rem; }
+.analysis-type { margin-top: .75rem; padding: .75rem 1rem; border-radius: 12px; background: rgba(131,151,145,.08); }
+.analysis-type strong { display: block; margin-bottom: .25rem; }
+.analysis-type p { margin: 0; font-size: .95rem; opacity: .92; }
+
+.tips-summary { font-weight: 600; }
+.tips-list { list-style: none; padding: 0; margin: 0 0 1.25rem 0; }
+.tips-list li { padding: .55rem 0; border-bottom: 1px dashed rgba(131,151,145,.25); }
+.tips-list li:last-child { border-bottom: none; }
+.tips-list li i { color: #4e635e; margin-inline-end: .6rem; width: 1.1rem; text-align: center; }
+.tips-cta { display: flex; gap: .75rem; flex-wrap: wrap; }
+
+.crisis-banner {
+  margin-top: 1.25rem;
+  padding: .9rem 1.1rem;
+  border-radius: 12px;
+  background: #fee2e2;
+  color: #7f1d1d;
+  border-inline-start: 4px solid #b91c1c;
+  display: flex; flex-wrap: wrap; align-items: center; gap: .6rem;
+}
+.crisis-banner i { font-size: 1.25rem; }
+.crisis-banner .crisis-link { color: #7f1d1d; font-weight: 700; text-decoration: underline; margin-inline-start: auto; }
+[data-theme="dark"] .crisis-banner { background: rgba(185,28,28,.22); color: #fecaca; }
+[data-theme="dark"] .crisis-banner .crisis-link { color: #fecaca; }
+
+/* Table */
+.table-wrap { overflow-x: auto; }
+.history-table { width: 100%; border-collapse: collapse; }
+.history-table th, .history-table td { text-align: start; padding: .65rem .75rem; border-bottom: 1px solid rgba(131,151,145,.18); font-size: .95rem; }
+.history-table th { font-weight: 700; opacity: .8; font-size: .82rem; text-transform: uppercase; letter-spacing: .3px; }
+.muted-row { color: #6b7280; font-style: italic; text-align: center; padding: 1rem 0 !important; }
+.history-caption { margin-top: .75rem; font-size: .85rem; opacity: .75; text-align: center; }
+
+.crisis-chip {
+  display: inline-flex; align-items: center; gap: .35rem;
+  background: #b91c1c; color: #fff; padding: .18rem .55rem; border-radius: 999px;
+  font-size: .75rem; font-weight: 700;
+}
+
+.sev-badge { display: inline-block; padding: .22rem .65rem; border-radius: 999px; font-size: .78rem; font-weight: 600; }
+.sev-minimal            { background: #d1fae5; color: #065f46; }
+.sev-mild               { background: #fef3c7; color: #92400e; }
+.sev-moderate           { background: #fed7aa; color: #7c2d12; }
+.sev-moderately-severe  { background: #fecaca; color: #7f1d1d; }
+.sev-severe             { background: #b91c1c; color: #fff; }
+.sev-unknown            { background: #e5e7eb; color: #374151; }
+[data-theme="dark"] .sev-minimal  { background: rgba(20,184,166,.22); color: #99f6e4; }
+[data-theme="dark"] .sev-mild     { background: rgba(245,158,11,.22); color: #fde68a; }
+[data-theme="dark"] .sev-moderate { background: rgba(234,88,12,.24);  color: #fed7aa; }
+[data-theme="dark"] .sev-moderately-severe { background: rgba(220,38,38,.28); color: #fecaca; }
+[data-theme="dark"] .sev-severe   { background: rgba(185,28,28,.7);   color: #fff; }
+[data-theme="dark"] .sev-unknown  { background: rgba(107,114,128,.35); color: #d1d5db; }
+</style>
+{% endblock %}

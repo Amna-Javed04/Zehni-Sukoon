@@ -12,14 +12,26 @@
         <p class="text-muted mb-0" data-ur="پرائیویسی کا مکمل تحفظ — یہاں کسی بھی صارف کا انفرادی ڈیٹا محفوظ نہیں کیا جاتا۔" data-en="Privacy-first approach. Zero individually identifiable data is stored or displayed here.">پرائیویسی کا مکمل تحفظ — یہاں کسی بھی صارف کا انفرادی ڈیٹا محفوظ نہیں کیا جاتا۔</p>
       </div>
 
-      <!-- Filter control -->
-      <div class="d-flex align-items-center gap-2">
-        <label for="admin-filter" class="mb-0 font-weight-bold" style="font-size:0.9rem;" data-ur="فلٹر کریں:" data-en="Filter Type:">فلٹر کریں:</label>
-        <select id="admin-filter" class="form-control-zs" style="width: auto; padding: 0.4rem 1.5rem;" onchange="loadAdminStats()">
-          <option value="all" data-ur="تمام ٹیسٹ" data-en="All Assessments">تمام ٹیسٹ</option>
-          <option value="phq9" data-ur="PHQ-9 (مزاج)" data-en="PHQ-9 (Mood)">PHQ-9 (مزاج)</option>
-          <option value="gad7" data-ur="GAD-7 (گھبراہٹ)" data-en="GAD-7 (Anxiety)">GAD-7 (گھبراہٹ)</option>
-        </select>
+      <!-- Filter controls -->
+      <div class="admin-filters">
+        <div class="filter-field">
+          <label for="admin-filter" data-ur="فلٹر:" data-en="Type:">فلٹر:</label>
+          <select id="admin-filter" class="form-control-zs" onchange="loadAdminStats()">
+            <option value="all" data-ur="تمام ٹیسٹ" data-en="All assessments">تمام ٹیسٹ</option>
+            <option value="phq9" data-ur="PHQ-9 (مزاج)" data-en="PHQ-9 (Mood)">PHQ-9 (مزاج)</option>
+            <option value="gad7" data-ur="GAD-7 (گھبراہٹ)" data-en="GAD-7 (Anxiety)">GAD-7 (گھبراہٹ)</option>
+          </select>
+        </div>
+        <div class="filter-field">
+          <label for="admin-start" data-ur="شروع" data-en="From">شروع</label>
+          <input type="date" id="admin-start" class="form-control-zs" onchange="loadAdminStats()">
+        </div>
+        <div class="filter-field">
+          <label for="admin-end" data-ur="آخر" data-en="To">آخر</label>
+          <input type="date" id="admin-end" class="form-control-zs" onchange="loadAdminStats()">
+        </div>
+        <button type="button" class="btn btn-zs-outline btn-sm" onclick="resetAdminFilters()"
+                data-ur="دوبارہ ترتیب" data-en="Reset">دوبارہ ترتیب</button>
       </div>
     </div>
 
@@ -32,6 +44,10 @@
       <div class="glass-card stat-card">
         <div class="stat-value" id="stat-avg-score">0</div>
         <div class="stat-label" data-ur="اوسط سکور" data-en="Average Score">اوسط سکور</div>
+      </div>
+      <div class="glass-card stat-card">
+        <div class="stat-value" id="stat-total-users">0</div>
+        <div class="stat-label" data-ur="کل صارفین" data-en="Total Users">کل صارفین</div>
       </div>
       <div class="glass-card stat-card">
         <div class="stat-value" id="stat-lang-ur">0</div>
@@ -78,6 +94,71 @@
       </div>
     </div>
 
+    <!-- ─── User management ─────────────────────────────────────────── -->
+    <div class="glass-card p-4 mt-4">
+      <div class="users-header">
+        <div>
+          <h4 class="mb-1" data-ur="صارف انتظام" data-en="User Management">صارف انتظام</h4>
+          <p class="muted-line"
+             data-ur="صرف اکاؤنٹ میٹا ڈیٹا دکھایا جاتا ہے — جوابات یا سکور کبھی ظاہر نہیں ہوتے۔"
+             data-en="Account metadata only — answers and scores are never displayed here.">صرف اکاؤنٹ میٹا ڈیٹا دکھایا جاتا ہے — جوابات یا سکور کبھی ظاہر نہیں ہوتے۔</p>
+        </div>
+      </div>
+
+      <!-- Add user form -->
+      <form class="user-add-form" onsubmit="submitAddUser(event)" autocomplete="off">
+        <div class="filter-field">
+          <label for="new-email" data-ur="ای میل" data-en="Email">ای میل</label>
+          <input type="email" id="new-email" class="form-control-zs" required>
+        </div>
+        <div class="filter-field">
+          <label for="new-password" data-ur="پاس ورڈ (کم از کم ۸)" data-en="Password (min 8)">پاس ورڈ (کم از کم ۸)</label>
+          <input type="password" id="new-password" class="form-control-zs" minlength="8" required>
+        </div>
+        <div class="filter-field filter-field-check">
+          <label for="new-is-admin" data-ur="ایڈمن حیثیت" data-en="Admin role">ایڈمن حیثیت</label>
+          <input type="checkbox" id="new-is-admin" style="width:auto;">
+        </div>
+        <button type="submit" class="btn btn-zs-primary" id="add-user-btn"
+                data-ur="صارف شامل کریں" data-en="Add user">صارف شامل کریں</button>
+      </form>
+
+      <!-- Filter + list -->
+      <div class="users-toolbar">
+        <div class="filter-field">
+          <label for="users-search" data-ur="تلاش" data-en="Search">تلاش</label>
+          <input type="search" id="users-search" class="form-control-zs"
+                 placeholder="email…" oninput="debouncedLoadUsers()">
+        </div>
+        <div class="filter-field">
+          <label for="users-role" data-ur="کردار" data-en="Role">کردار</label>
+          <select id="users-role" class="form-control-zs" onchange="loadUsers()">
+            <option value="all"   data-ur="سب"     data-en="All">سب</option>
+            <option value="user"  data-ur="صارف"    data-en="User">صارف</option>
+            <option value="admin" data-ur="ایڈمن"   data-en="Admin">ایڈمن</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="users-table">
+          <thead>
+            <tr>
+              <th data-ur="ای میل" data-en="Email">ای میل</th>
+              <th data-ur="کردار" data-en="Role">کردار</th>
+              <th data-ur="تاریخِ اندراج" data-en="Joined">تاریخِ اندراج</th>
+              <th data-ur="جانچیں" data-en="Check-ins">جانچیں</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="users-body">
+            <tr><td colspan="5" class="muted-row" data-ur="لوڈ ہو رہا ہے…" data-en="Loading…">لوڈ ہو رہا ہے…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p id="users-caption" class="history-caption"></p>
+    </div>
+
   </div>
 </div>
 {% endblock %}
@@ -101,16 +182,25 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Initial load
   loadAdminStats();
+  loadUsers();
+
+  // Re-render dynamic rows when language changes (users list)
+  new MutationObserver(() => {
+    if (lastUsers) renderUsers(lastUsers.users, lastUsers);
+  }).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
 });
 
 async function loadAdminStats() {
   const filterType = document.getElementById('admin-filter').value;
+  const start = document.getElementById('admin-start')?.value || '';
+  const end   = document.getElementById('admin-end')?.value   || '';
   try {
-    const data = await Api.admin.stats(filterType);
+    const data = await Api.admin.stats({ assessment_type: filterType, start, end });
     
     // Set text metrics
     document.getElementById('stat-total-screenings').textContent = data.total_screenings;
     document.getElementById('stat-avg-score').textContent = data.average_score;
+    document.getElementById('stat-total-users').textContent = data.total_users ?? 0;
     
     // Language counters
     document.getElementById('stat-lang-ur').textContent = data.language_distribution.ur || 0;
@@ -282,6 +372,133 @@ function renderCharts(data) {
     }
   });
 }
+
+// ── Filters reset ────────────────────────────────────────────────────
+function resetAdminFilters() {
+  document.getElementById('admin-filter').value = 'all';
+  document.getElementById('admin-start').value = '';
+  document.getElementById('admin-end').value   = '';
+  loadAdminStats();
+}
+
+// ── User management ──────────────────────────────────────────────────
+let lastUsers = null;
+let _usersSearchTimer = null;
+
+function debouncedLoadUsers() {
+  clearTimeout(_usersSearchTimer);
+  _usersSearchTimer = setTimeout(loadUsers, 300);
+}
+
+async function loadUsers() {
+  const search = document.getElementById('users-search')?.value?.trim() || '';
+  const role   = document.getElementById('users-role')?.value || 'all';
+  try {
+    const data = await Api.admin.users({ search, role, limit: 100 });
+    lastUsers = data;
+    renderUsers(data.users, data);
+    applyLanguage(getCurrentLang());
+  } catch (err) {
+    showFlash(err.message || (getCurrentLang() === 'ur' ? 'صارف فہرست لوڈ نہیں ہوئی' : 'Failed to load users'), 'error');
+  }
+}
+
+function renderUsers(users, meta) {
+  const tbody = document.getElementById('users-body');
+  const caption = document.getElementById('users-caption');
+  tbody.innerHTML = '';
+  const lang = getCurrentLang();
+
+  if (!users || users.length === 0) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = 5;
+    td.className = 'muted-row';
+    td.textContent = lang === 'ur' ? 'کوئی صارف نہیں ملا۔' : 'No users found.';
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+    if (caption) caption.textContent = '';
+    return;
+  }
+
+  for (const u of users) {
+    const tr = document.createElement('tr');
+    tr.appendChild(_td(u.email));
+    const roleTd = document.createElement('td');
+    roleTd.innerHTML = u.is_admin
+      ? `<span class="role-chip role-admin"><i class="fas fa-shield-halved"></i> ${lang === 'ur' ? 'ایڈمن' : 'Admin'}</span>`
+      : `<span class="role-chip role-user">${lang === 'ur' ? 'صارف' : 'User'}</span>`;
+    tr.appendChild(roleTd);
+    tr.appendChild(_td(_fmtDate(u.created_at, lang)));
+    tr.appendChild(_td(String(u.screening_count ?? 0)));
+    const actTd = document.createElement('td');
+    actTd.innerHTML = `<button type="button" class="btn-delete-user" onclick="deleteUserById(${u.id}, '${_jsStr(u.email)}')">
+      <i class="fas fa-trash" aria-hidden="true"></i>
+      <span>${lang === 'ur' ? 'حذف کریں' : 'Delete'}</span>
+    </button>`;
+    tr.appendChild(actTd);
+    tbody.appendChild(tr);
+  }
+
+  if (caption && typeof meta.total === 'number') {
+    caption.textContent = lang === 'ur'
+      ? `کل ${meta.total} صارف — ${users.length} دکھائے گئے۔`
+      : `${meta.total} users total — showing ${users.length}.`;
+  }
+}
+
+function _td(text) { const td = document.createElement('td'); td.textContent = text; return td; }
+function _jsStr(s) { return String(s || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
+function _fmtDate(iso, lang) {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso);
+    if (isNaN(d)) return iso;
+    return d.toLocaleDateString(lang === 'ur' ? 'ur-PK' : 'en-GB', { year: 'numeric', month: 'short', day: 'numeric' });
+  } catch { return iso; }
+}
+
+async function submitAddUser(e) {
+  e.preventDefault();
+  const email    = document.getElementById('new-email').value.trim();
+  const password = document.getElementById('new-password').value;
+  const is_admin = document.getElementById('new-is-admin').checked;
+  const btn = document.getElementById('add-user-btn');
+  btn.disabled = true;
+  try {
+    await Api.admin.addUser({ email, password, is_admin });
+    showFlash(getCurrentLang() === 'ur' ? 'صارف شامل کر دیا گیا۔' : 'User added.', 'success');
+    document.getElementById('new-email').value = '';
+    document.getElementById('new-password').value = '';
+    document.getElementById('new-is-admin').checked = false;
+    await Promise.all([loadUsers(), loadAdminStats()]);
+  } catch (err) {
+    showFlash(err.message || (getCurrentLang() === 'ur' ? 'شامل نہیں ہو سکا' : 'Could not add user'), 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function deleteUserById(id, email) {
+  const lang = getCurrentLang();
+  const msg = lang === 'ur'
+    ? `کیا آپ واقعی ${email} کو حذف کرنا چاہتے ہیں؟ ان کی تمام جانچ کے ریکارڈ بھی ہمیشہ کے لیے مٹ جائیں گے۔`
+    : `Really delete ${email}? Their screening records will be permanently erased too.`;
+  if (!confirm(msg)) return;
+  try {
+    await Api.admin.deleteUser(id);
+    showFlash(lang === 'ur' ? 'صارف حذف کر دیا گیا۔' : 'User deleted.', 'success');
+    await Promise.all([loadUsers(), loadAdminStats()]);
+  } catch (err) {
+    showFlash(err.message || (lang === 'ur' ? 'حذف نہیں ہو سکا' : 'Could not delete'), 'error');
+  }
+}
+
+window.resetAdminFilters = resetAdminFilters;
+window.debouncedLoadUsers = debouncedLoadUsers;
+window.loadUsers = loadUsers;
+window.submitAddUser = submitAddUser;
+window.deleteUserById = deleteUserById;
 </script>
 
 <style>
@@ -298,6 +515,11 @@ function renderCharts(data) {
 @media (min-width: 992px) {
   .admin-cards-grid {
     grid-template-columns: repeat(4, 1fr);
+  }
+}
+@media (min-width: 1200px) {
+  .admin-cards-grid {
+    grid-template-columns: repeat(5, 1fr);
   }
 }
 
@@ -326,5 +548,70 @@ function renderCharts(data) {
   height: 250px;
   width: 100%;
 }
+
+/* ── Filter controls ───────────────────────────────────────────────── */
+.admin-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .9rem;
+  align-items: flex-end;
+}
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+  min-width: 170px;
+}
+.filter-field label { font-size: .82rem; font-weight: 600; opacity: .8; }
+.filter-field .form-control-zs { width: 100%; padding: .4rem .7rem; font-size: .95rem; }
+.filter-field-check { min-width: auto; align-items: flex-start; }
+.filter-field-check input[type="checkbox"] { width: 20px; height: 20px; margin-top: .35rem; }
+.btn-sm { padding: .35rem .75rem; font-size: .85rem; }
+
+/* ── User management ───────────────────────────────────────────────── */
+.users-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; }
+.muted-line { opacity: .78; font-size: .9rem; margin: 0; }
+
+.user-add-form,
+.users-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border-radius: 12px;
+  background: rgba(131,151,145,.08);
+}
+
+.users-table { width: 100%; border-collapse: collapse; }
+.users-table th,
+.users-table td { text-align: start; padding: .65rem .75rem; border-bottom: 1px solid rgba(131,151,145,.18); font-size: .95rem; }
+.users-table th { font-weight: 700; opacity: .8; font-size: .82rem; text-transform: uppercase; letter-spacing: .3px; }
+.table-wrap { overflow-x: auto; }
+.muted-row { color: #6b7280; font-style: italic; text-align: center; padding: 1rem 0 !important; }
+.history-caption { margin-top: .75rem; font-size: .85rem; opacity: .75; text-align: center; }
+
+.role-chip {
+  display: inline-flex; align-items: center; gap: .35rem;
+  padding: .18rem .6rem; border-radius: 999px; font-size: .78rem; font-weight: 600;
+}
+.role-chip.role-admin { background: #ede9fe; color: #5b21b6; }
+.role-chip.role-user  { background: #d1fae5; color: #065f46; }
+[data-theme="dark"] .role-chip.role-admin { background: rgba(139,92,246,.25); color: #ddd6fe; }
+[data-theme="dark"] .role-chip.role-user  { background: rgba(20,184,166,.25); color: #99f6e4; }
+
+.btn-delete-user {
+  display: inline-flex; align-items: center; gap: .35rem;
+  background: transparent; color: #b91c1c; border: 1px solid rgba(185,28,28,.4);
+  padding: .3rem .65rem; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600;
+  transition: background .15s ease, color .15s ease;
+}
+.btn-delete-user:hover { background: #b91c1c; color: #fff; border-color: #b91c1c; }
+[data-theme="dark"] .btn-delete-user { color: #fca5a5; border-color: rgba(252,165,165,.4); }
+[data-theme="dark"] .btn-delete-user:hover { background: #b91c1c; color: #fff; }
+
+/* RTL: keep filter field checkboxes aligned to the correct inline edge */
+html[dir="rtl"] .filter-field-check { align-items: flex-start; }
 </style>
 {% endblock %}

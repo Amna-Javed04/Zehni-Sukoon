@@ -39,6 +39,16 @@ class ApiError extends Error {
   }
 }
 
+// Build `?a=b&c=d` from an object, skipping empty/undefined values.
+function qs(params = {}) {
+  const q = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== '') q.set(k, v);
+  });
+  const s = q.toString();
+  return s ? `?${s}` : '';
+}
+
 // Auth endpoints
 const Api = {
   auth: {
@@ -67,9 +77,15 @@ const Api = {
     companion: (message, history) =>
       apiFetch('/chat/companion', { method: 'POST', body: JSON.stringify({ message, history }) }),
   },
+  user: {
+    overview: (params = {}) => apiFetch(`/user/overview${qs(params)}`),
+    history:  (params = {}) => apiFetch(`/user/history${qs(params)}`),
+  },
   admin: {
-    stats: (assessmentType = 'all') =>
-      apiFetch(`/admin/stats?assessment_type=${assessmentType}`),
+    stats:     (params = {}) => apiFetch(`/admin/stats${qs(params)}`),
+    users:     (params = {}) => apiFetch(`/admin/users${qs(params)}`),
+    addUser:   (payload)      => apiFetch('/admin/users', { method: 'POST', body: JSON.stringify(payload) }),
+    deleteUser: (id)         => apiFetch(`/admin/users/${id}`, { method: 'DELETE' }),
   },
 };
 

@@ -41,6 +41,7 @@ function authUpdateHeader() {
   const loggedIn  = document.getElementById('auth-logged-in');
   const badge     = document.getElementById('nav-user-badge');
   const adminItem = document.getElementById('admin-nav-item');
+  const dashItem  = document.getElementById('dashboard-nav-item');
 
   if (user) {
     loggedOut?.classList.add('d-none');
@@ -56,14 +57,19 @@ function authUpdateHeader() {
     if (adminItem) {
       user.is_admin ? adminItem.classList.remove('d-none') : adminItem.classList.add('d-none');
     }
+    // Show the personal dashboard tab for every logged-in account (admins included —
+    // they may still want to run their own check-ins and see their own trend).
+    if (dashItem) dashItem.classList.remove('d-none');
   } else if (guestId) {
     loggedOut?.classList.remove('d-none');
     loggedIn?.classList.add('d-none');
     if (adminItem) adminItem.classList.add('d-none');
+    if (dashItem)  dashItem.classList.add('d-none');
   } else {
     loggedOut?.classList.remove('d-none');
     loggedIn?.classList.add('d-none');
     if (adminItem) adminItem.classList.add('d-none');
+    if (dashItem)  dashItem.classList.add('d-none');
   }
 }
 
@@ -112,6 +118,17 @@ function requireAdmin() {
   if (!user || !user.is_admin) { window.location.href = '/'; return false; }
   return true;
 }
+// Personal dashboard guard — requires a real account (not a guest session).
+function requireUser() {
+  const user = authGetUser();
+  const token = authGetToken();
+  if (!user || !token) {
+    const next = encodeURIComponent(window.location.pathname + window.location.search);
+    window.location.href = `/login?next=${next}`;
+    return false;
+  }
+  return true;
+}
 
 // ── Flash message helper ─────────────────────────────────────
 function showFlash(message, type = 'info') {
@@ -141,4 +158,5 @@ window.handleLogout    = handleLogout;
 window.quickExit       = quickExit;
 window.requireAuth     = requireAuth;
 window.requireAdmin    = requireAdmin;
+window.requireUser     = requireUser;
 window.showFlash       = showFlash;

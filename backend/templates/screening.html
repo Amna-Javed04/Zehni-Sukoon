@@ -253,7 +253,10 @@
 
     <!-- Actions / Next Steps -->
     <div class="d-flex flex-column gap-2 mt-4">
-      <a href="{{ url_for('resources') }}" class="btn btn-zs-primary text-center" data-ur="مددگار وسائل دیکھیں" data-en="Explore resources">مددگار وسائل دیکھیں</a>
+      <a href="{{ url_for('resources') }}" class="btn btn-find-help text-center"
+         data-ur="📍 اپنے قریب تھراپسٹ یا ہسپتال ڈھونڈیں"
+         data-en="📍 Find a Therapist or Help Near You">📍 اپنے قریب تھراپسٹ یا ہسپتال ڈھونڈیں</a>
+      <a href="{{ url_for('self_care') }}" class="btn btn-zs-primary text-center" data-ur="خود کی دیکھ بھال کے طریقے دیکھیں" data-en="Explore self-care techniques">خود کی دیکھ بھال کے طریقے دیکھیں</a>
       <button class="btn btn-zs-outline" onclick="resetScreening()" data-ur="دوبارہ جانچ کریں" data-en="Retake Assessment">دوبارہ جانچ کریں</button>
     </div>
   </div>
@@ -700,6 +703,27 @@ function resetScreening() {
 </script>
 
 <style>
+/* Prominent "find a therapist near you" CTA on the results view */
+.btn-find-help {
+  background: linear-gradient(135deg, #4e635e, #65587a);
+  color: #fff !important;
+  border: none;
+  border-radius: 12px;
+  padding: 0.85rem 1.25rem;
+  font-weight: 700;
+  font-size: 1rem;
+  box-shadow: 0 4px 14px rgba(78, 99, 94, 0.28);
+  transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+}
+.btn-find-help:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(78, 99, 94, 0.32);
+  filter: brightness(1.05);
+  color: #fff !important;
+  text-decoration: none;
+}
+[data-theme="dark"] .btn-find-help { box-shadow: 0 4px 14px rgba(0,0,0,.35); }
+
 .flow-steps-indicator {
   display: flex;
   align-items: center;

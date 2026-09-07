@@ -57,10 +57,15 @@
         <p class="text-muted" data-ur="مشین لرننگ کے تین مختلف ماڈلز کی مدد سے مزید درست اور مستند نتائج۔" data-en="Ensemble predictions from 3 different models ensure secure and highly accurate reports.">مشین لرننگ کے تین مختلف ماڈلز کی مدد سے مزید درست اور مستند نتائج۔</p>
       </div>
       <!-- Feature 3 -->
-      <div class="glass-card feature-item">
+      <div class="glass-card feature-item feature-clickable"
+           role="button" tabindex="0"
+           onclick="CompanionWidget.open()"
+           onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();CompanionWidget.open();}"
+           aria-label="Open Humdum chat companion">
         <div class="feature-icon"><i class="fas fa-comments"></i></div>
         <h3 data-ur="ذہنی صحت کا ہمدم (چیٹ)" data-en="Calming Companion">ذہنی صحت کا ہمدم (چیٹ)</h3>
         <p class="text-muted" data-ur="کسی بھی وقت بات چیت کے لیے دستیاب ہمدرد اے آئی ساتھی۔" data-en="Share your mind with an AI companion designed to listen, guide and support.">کسی بھی وقت بات چیت کے لیے دستیاب ہمدرد اے آئی ساتھی۔</p>
+        <span class="feature-open-hint" data-ur="نیچے دائیں کونے سے کھولیں ›" data-en="Open chat ›">نیچے دائیں کونے سے کھولیں ›</span>
       </div>
     </div>
   </div>

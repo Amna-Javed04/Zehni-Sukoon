@@ -48,11 +48,15 @@
       <ul class="navbar-tabs" id="main-tabs" role="tablist">
         <li><a href="{{ url_for('index') }}" class="tab-link {% if request.endpoint == 'index' %}active{% endif %}" data-ur="ہوم" data-en="Home" role="tab">ہوم</a></li>
         <li><a href="{{ url_for('screening') }}" class="tab-link {% if request.endpoint in ['screening','consent','assessment'] %}active{% endif %}" data-ur="جانچ" data-en="Screening" role="tab">جانچ</a></li>
-        <li><a href="{{ url_for('companion') }}" class="tab-link {% if request.endpoint == 'companion' %}active{% endif %}" data-ur="ساتھی" data-en="Companion" role="tab">ساتھی</a></li>
+        <li><a href="{{ url_for('self_care') }}" class="tab-link {% if request.endpoint == 'self_care' %}active{% endif %}" data-ur="سیلف کیئر" data-en="Self-Care" role="tab">سیلف کیئر</a></li>
         <li><a href="{{ url_for('resources') }}" class="tab-link {% if request.endpoint == 'resources' %}active{% endif %}" data-ur="وسائل" data-en="Resources" role="tab">وسائل</a></li>
+        <!-- Dashboard tab: shown by auth-client.js only when a JWT is present -->
+        <li class="dashboard-tab-item d-none" id="dashboard-nav-item">
+          <a href="{{ url_for('user_dashboard') }}" class="tab-link {% if request.endpoint == 'user_dashboard' %}active{% endif %}" data-ur="ڈیش بورڈ" data-en="Dashboard">ڈیش بورڈ</a>
+        </li>
         <!-- Admin tab: only rendered if current user is admin (checked client-side from localStorage token) -->
         <li class="admin-tab-item d-none" id="admin-nav-item">
-          <a href="{{ url_for('admin_dashboard') }}" class="tab-link tab-link-admin" data-ur="ایڈمن" data-en="Admin">ایڈمن</a>
+          <a href="{{ url_for('admin_dashboard') }}" class="tab-link tab-link-admin {% if request.endpoint == 'admin_dashboard' %}active{% endif %}" data-ur="ایڈمن" data-en="Admin">ایڈمن</a>
         </li>
       </ul>
 
@@ -138,7 +142,7 @@
           <ul class="footer-links">
             <li><a href="{{ url_for('index') }}" data-ur="ہوم" data-en="Home">ہوم</a></li>
             <li><a href="{{ url_for('screening') }}" data-ur="جانچ" data-en="Screening">جانچ</a></li>
-            <li><a href="{{ url_for('companion') }}" data-ur="ساتھی" data-en="Companion">ساتھی</a></li>
+            <li><a href="{{ url_for('self_care') }}" data-ur="سیلف کیئر" data-en="Self-Care">سیلف کیئر</a></li>
             <li><a href="{{ url_for('resources') }}" data-ur="وسائل" data-en="Resources">وسائل</a></li>
           </ul>
         </div>
@@ -162,6 +166,55 @@
     </div>
   </footer>
 
+  <!-- ═══════════════════════════════════════════════════════
+       FLOATING COMPANION CHAT WIDGET (Humdum) — available on every page
+       ═══════════════════════════════════════════════════════ -->
+  <div id="companion-widget" class="companion-widget">
+    <button id="companion-fab" class="companion-fab" type="button"
+            aria-expanded="false" aria-controls="companion-panel"
+            aria-label="Humdum — AI Companion / ہمدم"
+            title="Humdum — AI Companion">
+      <i class="fas fa-comments fab-icon"    aria-hidden="true"></i>
+      <i class="fas fa-xmark fab-close"      aria-hidden="true"></i>
+      <span class="fab-badge" id="companion-fab-badge" aria-hidden="true"></span>
+    </button>
+
+    <section id="companion-panel" class="companion-panel d-none"
+             role="dialog" aria-modal="false" aria-labelledby="companion-panel-title">
+      <header class="companion-panel-head">
+        <div class="companion-panel-id">
+          <i class="fas fa-robot" aria-hidden="true"></i>
+          <div>
+            <div class="companion-panel-title" id="companion-panel-title"
+                 data-ur="ہمدم — آپ کا اے آئی ساتھی"
+                 data-en="Humdum — Your AI Companion">ہمدم — آپ کا اے آئی ساتھی</div>
+            <div class="companion-panel-sub"
+                 data-ur="محفوظ • نجی • ۲۴/۷ دستیاب"
+                 data-en="Private • Confidential • Available 24/7">محفوظ • نجی • ۲۴/۷ دستیاب</div>
+          </div>
+        </div>
+        <button type="button" class="companion-panel-close"
+                onclick="CompanionWidget.close()" aria-label="Close chat / بند کریں">
+          <i class="fas fa-xmark" aria-hidden="true"></i>
+        </button>
+      </header>
+      <div class="companion-chat-window" id="companion-chat-window" aria-live="polite"></div>
+      <form class="companion-chat-form" id="companion-chat-form"
+            onsubmit="return CompanionWidget.send(event)">
+        <input type="text" id="companion-chat-input" class="chat-input"
+               autocomplete="off" required maxlength="1500"
+               data-ph-ur="یہاں لکھیں…" data-ph-en="Type your message…" />
+        <button type="submit" class="companion-send-btn" id="companion-send-btn"
+                aria-label="Send / بھیجیں">
+          <i class="fas fa-paper-plane" aria-hidden="true"></i>
+        </button>
+      </form>
+      <p class="companion-disclaimer"
+         data-ur="ہمدم ایک AI ساتھی ہے، طبی تشخیص نہیں۔ ہنگامی صورت میں Rescue 1122 یا Umang 0311-7786264 پر رابطہ کریں۔"
+         data-en="Humdum is an AI companion, not a medical substitute. For emergencies, call Rescue 1122 or Umang 0311-7786264.">ہمدم ایک AI ساتھی ہے، طبی تشخیص نہیں۔ ہنگامی صورت میں Rescue 1122 یا Umang 0311-7786264 پر رابطہ کریں۔</p>
+    </section>
+  </div>
+
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
@@ -170,6 +223,7 @@
   <script src="{{ url_for('static', filename='js/auth-client.js') }}"></script>
   <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
   <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/companion-widget.js') }}"></script>
 
   {% block scripts %}{% endblock %}
 
