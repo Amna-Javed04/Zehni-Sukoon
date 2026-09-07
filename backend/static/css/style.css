@@ -919,3 +919,41 @@ html[dir="rtl"] .chat-bubble.bot { align-self: flex-end; border-bottom-left-radi
   color: var(--brand-green-dark, #4e635e);
 }
 [dir="rtl"] .feature-open-hint::after { content: ''; }
+
+/* ═══ Segmented Depression/Anxiety slider (user + admin dashboards) ═══ */
+.seg-slider {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(131,151,145,.16);
+  border: 1px solid rgba(78,99,94,.22);
+}
+.seg-thumb {
+  position: absolute;
+  top: 4px; bottom: 4px;
+  inset-inline-start: 4px;
+  width: calc(50% - 5px);
+  border-radius: 999px;
+  background: var(--brand-green, #4e635e);
+  box-shadow: 0 2px 8px rgba(31,41,39,.22);
+  transition: inset-inline-start .25s ease;
+}
+.seg-slider[data-active="gad7"] .seg-thumb { inset-inline-start: 50%; }
+.seg-opt {
+  position: relative; z-index: 1;
+  display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
+  padding: .5rem .9rem;
+  border: none; background: transparent; cursor: pointer;
+  font: inherit; font-weight: 600; font-size: .92rem;
+  color: var(--text-main, #1b1c1c);
+  border-radius: 999px;
+  transition: color .2s ease;
+  white-space: nowrap;
+}
+.seg-opt i { font-size: .95rem; }
+.seg-slider[data-active="phq9"] .seg-opt[data-value="phq9"],
+.seg-slider[data-active="gad7"] .seg-opt[data-value="gad7"] { color: #fbf9f8; }
+[data-theme="dark"] .seg-slider { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.14); }
+[data-theme="dark"] .seg-opt { color: #e8e2f4; }

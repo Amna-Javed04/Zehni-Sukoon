@@ -23,13 +23,19 @@
 
     <!-- Filter bar -->
     <div class="glass-card filter-bar">
-      <div class="filter-field">
-        <label for="filter-type" data-ur="قسم" data-en="Type">قسم</label>
-        <select id="filter-type" class="form-control-zs">
-          <option value="all"  data-ur="تمام ٹیسٹ"       data-en="All assessments">تمام ٹیسٹ</option>
-          <option value="phq9" data-ur="PHQ-9 (مزاج)"     data-en="PHQ-9 (Mood)">PHQ-9 (مزاج)</option>
-          <option value="gad7" data-ur="GAD-7 (گھبراہٹ)"  data-en="GAD-7 (Anxiety)">GAD-7 (گھبراہٹ)</option>
-        </select>
+      <div class="filter-field filter-field-slider">
+        <label id="filter-type-label" data-ur="جانچ کی قسم" data-en="Assessment">جانچ کی قسم</label>
+        <div class="seg-slider" id="filter-type-slider" data-active="phq9" role="tablist" aria-labelledby="filter-type-label">
+          <div class="seg-thumb" aria-hidden="true"></div>
+          <button type="button" class="seg-opt" data-value="phq9" role="tab" aria-selected="true" onclick="setFilterType('phq9')">
+            <i class="fas fa-cloud" aria-hidden="true"></i>
+            <span data-ur="ڈپریشن (PHQ-9)" data-en="Depression (PHQ-9)">ڈپریشن (PHQ-9)</span>
+          </button>
+          <button type="button" class="seg-opt" data-value="gad7" role="tab" aria-selected="false" onclick="setFilterType('gad7')">
+            <i class="fas fa-bolt" aria-hidden="true"></i>
+            <span data-ur="گھبراہٹ (GAD-7)" data-en="Anxiety (GAD-7)">گھبراہٹ (GAD-7)</span>
+          </button>
+        </div>
       </div>
       <div class="filter-field">
         <label for="filter-start" data-ur="شروع کی تاریخ" data-en="From">شروع کی تاریخ</label>
@@ -175,15 +181,26 @@ document.addEventListener('DOMContentLoaded', () => {
   }).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
 });
 
+function setFilterType(type) {
+  const slider = document.getElementById('filter-type-slider');
+  slider.dataset.active = type;
+  slider.querySelectorAll('.seg-opt').forEach(btn =>
+    btn.setAttribute('aria-selected', String(btn.dataset.value === type)));
+  loadDashboard();
+}
+
 function resetFilters() {
-  document.getElementById('filter-type').value = 'all';
+  const slider = document.getElementById('filter-type-slider');
+  slider.dataset.active = 'phq9';
+  slider.querySelectorAll('.seg-opt').forEach(btn =>
+    btn.setAttribute('aria-selected', String(btn.dataset.value === 'phq9')));
   document.getElementById('filter-start').value = '';
   document.getElementById('filter-end').value = '';
   loadDashboard();
 }
 
 async function loadDashboard() {
-  const type  = document.getElementById('filter-type').value;
+  const type  = document.getElementById('filter-type-slider').dataset.active || 'phq9';
   const start = document.getElementById('filter-start').value;
   const end   = document.getElementById('filter-end').value;
   try {
@@ -236,7 +253,7 @@ function renderOverview(ov) {
   document.getElementById('crisis-banner').classList.toggle('d-none', !ov.has_crisis);
 
   // Charts
-  renderTrendChart(ov.trend || []);
+  renderTrendChart(ov.trend || [], (ov.filters && ov.filters.type) || 'phq9');
   renderSeverityChart(ov.severity_distribution || {});
 
   // Analysis + tips
@@ -293,14 +310,20 @@ function directionBadge(situation, lang) {
 }
 
 // ── Charts ───────────────────────────────────────────────────────────
-function renderTrendChart(trend) {
+function renderTrendChart(trend, type) {
   const lang = getCurrentLang();
   const labels = trend.map(t => {
     const parts = (t.date || '').split('-');
     return parts.length === 3 ? `${parts[1]}/${parts[2]}` : t.date;
   });
-  const phq = trend.map(t => t.phq9);
-  const gad = trend.map(t => t.gad7);
+  // The slider always selects one instrument — plot exactly that series.
+  const isPhq = type !== 'gad7';
+  const series = trend.map(t => isPhq ? t.phq9 : t.gad7);
+  const label = isPhq
+    ? (lang === 'ur' ? 'ڈپریشن (PHQ-9)' : 'Depression (PHQ-9)')
+    : (lang === 'ur' ? 'گھبراہٹ (GAD-7)' : 'Anxiety (GAD-7)');
+  const lineColor = isPhq ? brandColors.lavender : brandColors.green;
+  const fillColor = isPhq ? 'rgba(101,88,122,0.15)' : 'rgba(78,99,94,0.15)';
 
   if (trendChartInstance) trendChartInstance.destroy();
   const ctx = document.getElementById('chart-trend').getContext('2d');
@@ -310,20 +333,12 @@ function renderTrendChart(trend) {
       labels,
       datasets: [
         {
-          label: 'PHQ-9',
-          data: phq,
-          borderColor: brandColors.lavender,
-          backgroundColor: 'rgba(101,88,122,0.15)',
-          borderWidth: 3, tension: 0.3, spanGaps: true,
-          pointBackgroundColor: brandColors.lavender, pointRadius: 4,
-        },
-        {
-          label: 'GAD-7',
-          data: gad,
-          borderColor: brandColors.green,
-          backgroundColor: 'rgba(78,99,94,0.15)',
-          borderWidth: 3, tension: 0.3, spanGaps: true,
-          pointBackgroundColor: brandColors.green, pointRadius: 4,
+          label,
+          data: series,
+          borderColor: lineColor,
+          backgroundColor: fillColor,
+          borderWidth: 3, tension: 0.3, spanGaps: true, fill: true,
+          pointBackgroundColor: lineColor, pointRadius: 4,
         },
       ],
     },
@@ -393,8 +408,8 @@ function renderAnalysis(ov, lang) {
     block.className = 'analysis-type';
     const typeName = t === 'phq9' ? 'PHQ-9' : t === 'gad7' ? 'GAD-7' : t;
     const label = lang === 'ur'
-      ? (t === 'phq9' ? 'مزاج' : t === 'gad7' ? 'گھبراہٹ' : '')
-      : (t === 'phq9' ? 'Mood' : t === 'gad7' ? 'Anxiety' : '');
+      ? (t === 'phq9' ? 'ڈپریشن' : t === 'gad7' ? 'گھبراہٹ' : '')
+      : (t === 'phq9' ? 'Depression' : t === 'gad7' ? 'Anxiety' : '');
     const h = document.createElement('strong');
     h.textContent = `${typeName}${label ? ' — ' + label : ''}`;
     block.appendChild(h);
@@ -614,6 +629,7 @@ function formatDate(iso, lang) {
 // Expose to inline onclick handlers
 window.loadDashboard = loadDashboard;
 window.resetFilters  = resetFilters;
+window.setFilterType = setFilterType;
 </script>
 
 <style>
@@ -626,6 +642,7 @@ window.resetFilters  = resetFilters;
   margin-bottom: 1.5rem;
 }
 .filter-field { display: flex; flex-direction: column; gap: .35rem; min-width: 180px; }
+.filter-field-slider { min-width: 260px; }
 .filter-field label { font-size: .85rem; font-weight: 600; opacity: .85; }
 .filter-field .form-control-zs { width: 100%; }
 .filter-actions { display: flex; gap: .6rem; align-items: center; margin-inline-start: auto; }

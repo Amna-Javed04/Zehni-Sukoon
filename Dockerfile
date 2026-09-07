@@ -1,5 +1,5 @@
 # ---------------------------------------------------------
-# Zehni Sukoon — Dockerfile for Alibaba Cloud ECS Deployment
+# Zehni Sukoon — production image
 # ---------------------------------------------------------
 
 FROM python:3.11-slim

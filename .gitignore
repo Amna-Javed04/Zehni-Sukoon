@@ -2,6 +2,17 @@ node_modules/
 .env
 .env.*
 !.env.example
+
+# Credential & key material — must never be committed
+*.pem
+*.key
+*.pfx
+*.p12
+id_rsa*
+credentials.json
+secrets.json
+*service-account*.json
+*service_account*.json
 __pycache__/
 venv/
 *.pyc

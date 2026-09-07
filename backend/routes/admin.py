@@ -68,7 +68,13 @@ def get_stats():
     gender_res = query.with_entities(
         Screening.gender, func.count(Screening.id)
     ).group_by(Screening.gender).all()
-    gender_breakdown = {gender or "Unknown": count for gender, count in gender_res}
+    # Normalise casing so 'female' and 'Female' collapse into one slice —
+    # SQL group_by is case-sensitive and mixed-case rows used to split the
+    # gender chart into two same-named segments.
+    gender_breakdown = {}
+    for gender, count in gender_res:
+        key = (gender or 'Unknown').strip().title() or 'Unknown'
+        gender_breakdown[key] = gender_breakdown.get(key, 0) + count
 
     # 5. Age group breakdown
     age_res = query.with_entities(

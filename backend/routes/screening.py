@@ -119,6 +119,10 @@ def get_result():
     answers = data.get('answers')
     age_group = data.get('age_group')
     gender = data.get('gender')
+    # Normalise casing ('female' -> 'Female') so aggregate gender charts never
+    # split one gender into two same-named pie segments.
+    if isinstance(gender, str):
+        gender = gender.strip().title() or None
     language = data.get('language', 'ur')
 
     if not answers:
@@ -156,6 +160,25 @@ def get_result():
         )
         db.session.add(screening)
 
+    # --- Full-coverage validation ---
+    # Every item of the instrument must carry a score. A missing item used to
+    # default to 0 ("not at all") when the ensemble vector was built, which
+    # quietly under-reported severity — the worst failure mode for a screening
+    # tool. Both the written form and the conversational mode are held to the
+    # same contract: complete coverage, 0-3 per item, nothing extra.
+    expected_items = 9 if screening.assessment_type == 'phq9' else 7
+    expected_keys = {f"q{i}" for i in range(1, expected_items + 1)}
+    missing_items = [k for k in sorted(expected_keys) if k not in answers_dict]
+    unexpected_items = sorted(set(answers_dict) - expected_keys)
+    if missing_items or unexpected_items:
+        return jsonify({
+            'error': 'Every item must be scored exactly once (q1..q%d).' % expected_items,
+            'missing_items': missing_items,
+            'unexpected_items': unexpected_items,
+        }), 400
+    if any(not 0 <= v <= 3 for v in answers_dict.values()):
+        return jsonify({'error': 'Answer scores must be integers between 0 and 3.'}), 400
+
     # Calculate total score
     total_score = sum(answers_dict.values())
 
@@ -163,7 +186,7 @@ def get_result():
     # In PHQ-9, Question 9 is "Thoughts that you would be better off dead or of hurting yourself in some way"
     is_crisis = False
     if screening.assessment_type == 'phq9':
-        q9_val = answers_dict.get('q9', 0)
+        q9_val = answers_dict['q9']
         if q9_val > 0:
             is_crisis = True
 
@@ -199,8 +222,11 @@ def get_result():
         # PHQ-9: Ensemble ML Classification
         if models_loaded:
             try:
-                # 1. Order PHQ-9 item scores (q1-q9)
-                phq_answers = [answers_dict.get(f"q{i}", 0) for i in range(1, 10)]
+                # 1. Order PHQ-9 item scores (q1-q9). Direct indexing is safe here
+                #    because full coverage was validated above; the old
+                #    answers_dict.get(f"q{i}", 0) silently scored unanswered
+                #    items as "not at all".
+                phq_answers = [answers_dict[f"q{i}"] for i in range(1, 10)]
                 
                 # 2. Map age group to numeric (midpoint)
                 age_map = {

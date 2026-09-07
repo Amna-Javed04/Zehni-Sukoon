@@ -147,8 +147,13 @@
     }
   }
 
-  // ── Wire up keyboard shortcut & i18n re-render on language toggle ───
+  // ── Wire up the FAB click, keyboard shortcut & i18n re-render ──────
   function boot() {
+    // The floating button is what the user actually clicks. It is rendered in
+    // base.html before this script runs, so it is always findable here.
+    const fab = qs('companion-fab');
+    if (fab) fab.addEventListener('click', toggle);
+
     document.addEventListener('keydown', (ev) => {
       if (ev.key === 'Escape' && isOpen) { close(); }
     });

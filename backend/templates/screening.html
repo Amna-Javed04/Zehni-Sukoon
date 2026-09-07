@@ -52,8 +52,8 @@
       <!-- Conversational Chat Card -->
       <div class="glass-card pathway-card" onclick="selectMode('chat')">
         <div class="pathway-icon"><i class="fas fa-comments"></i></div>
-        <h3 data-ur="مکالماتی گفتگو (Chat Mode)" data-en="Conversational Chat (Chat Mode)">مکالماتی گفتگو (Chat Mode)</h3>
-        <p class="text-muted" style="font-size:0.9rem;" data-ur="ہمارے ہمدرد معاون سے بات کریں جو آپ کے جوابات سے سکور اخذ کرے گا۔" data-en="Speak naturally to our AI assistant, who will understand and score your replies.">ہمارے ہمدرد معاون سے بات کریں جو آپ کے جوابات سے سکور اخذ کرے گا۔</p>
+        <h3 data-ur="ایک ہمدردانہ گفتگو" data-en="A Warm Conversation">ایک ہمدردانہ گفتگو</h3>
+        <p class="text-muted" style="font-size:0.9rem;" data-ur="ہمدم آپ سے ایسے ہی بات کرے گا جیسے کوئی سمجھدار دوست — کوئی نمبر شدہ سوال یا اسکال نہیں۔ آپ جیسے چاہیں اپنی کیفیت بیان کریں، وہ گفتگو میں سے ہی سمجھ لے گا۔ کچھ لمحات زیادہ لگ سکتے ہیں۔" data-en="Humdum simply talks with you, the way a thoughtful friend would — no numbered questions, no scale to tick. Describe how you feel in your own words and it listens for the rest. It may take a few minutes longer.">ہمدم آپ سے ایسے ہی بات کرے گا جیسے کوئی سمجھدار دوست — کوئی نمبر شدہ سوال یا اسکال نہیں۔ آپ جیسے چاہیں اپنی کیفیت بیان کریں، وہ گفتگو میں سے ہی سمجھ لے گا۔ کچھ لمحات زیادہ لگ سکتے ہیں۔</p>
       </div>
 
       <!-- Standard Form Card -->
@@ -182,21 +182,34 @@
        ═══════════════════════════════════════════════════════ -->
   <div id="stage-chat" class="glass-card p-4 fade-in-up d-none">
     <div class="chat-header mb-3 text-center">
-      <h4 class="mb-1" data-ur="ہمدم معاون جانچ" data-en="Humdum Screening Intake">ہمدم معاون جانچ</h4>
-      <p class="text-muted mb-0" style="font-size:0.85rem;" data-ur="اپنے جذبات کا اپنے الفاظ میں کھل کر اظہار کریں۔" data-en="Express your feelings freely in your own words.">اپنے جذبات کا اپنے الفاظ میں کھل کر اظہار کریں۔</p>
+      <h4 class="mb-1" data-ur="ہمدم سے بات چیت" data-en="A Conversation with Humdum">ہمدم سے بات چیت</h4>
+      <p class="text-muted mb-0" style="font-size:0.85rem;" data-ur="جیسے دل سے نکلے ویسے لکھیں — کوئی درست یا غلط جواب نہیں۔" data-en="Write it exactly as it comes to mind — there are no right or wrong answers.">جیسے دل سے نکلے ویسے لکھیں — کوئی درست یا غلط جواب نہیں۔</p>
     </div>
 
-    <div class="progress-bar-wrap mb-3">
+    <!-- Coverage progress: how much of the check has settled. Deliberately never
+         "question 3 of 9" — that phrasing is what made this mode feel like a
+         questionnaire wearing a chat bubble. -->
+    <div class="progress-bar-wrap mb-2">
       <div id="chat-progress" class="progress-bar-fill" style="width: 0%;"></div>
     </div>
+    <p id="chat-coverage-note" class="chat-coverage-note mb-3"></p>
+
+    <!-- Revealed the moment self-harm surfaces mid-conversation, without
+         aborting the screening or dumping the user onto another page. -->
+    <div id="chat-crisis-card" class="chat-crisis-card d-none mb-3"></div>
 
     <div class="chat-window mb-3" id="screening-chat-window" style="height: 380px;">
       <!-- Conversation history goes here -->
     </div>
 
+    <!-- Shown when the LLM is unavailable or the conversation over-ran:
+         finish the remaining items on the standard form instead. -->
+    <div id="chat-form-offer" class="chat-form-offer d-none mb-3"></div>
+
     <form id="screening-chat-form" class="chat-input-row" onsubmit="sendScreeningChatMessage(event)">
-      <input type="text" id="screening-chat-input" class="chat-input" 
-        placeholder="یہاں جواب لکھیں..." data-ph-ur="یہاں جواب لکھیں..." data-ph-en="Type your reply here..." required autocomplete="off">
+      <textarea id="screening-chat-input" class="chat-input chat-textarea" rows="2" required autocomplete="off"
+        onkeydown="handleScreeningChatKey(event)"
+        placeholder="یہاں لکھیں..." data-ph-ur="یہاں لکھیں..." data-ph-en="Type freely..."></textarea>
       <button type="submit" class="btn-zs-primary" id="screening-chat-send-btn">
         <i class="fas fa-paper-plane"></i>
       </button>
@@ -309,9 +322,24 @@ let currentQuestions = [];
 let answers = [];
 let currentQuestionIndex = 0;
 
-// Conversational mode specific state
-let chatQuestionIndex = 0;
-let isWaitingForClarification = false;
+// Conversational mode state. The browser owns the transcript; the server owns
+// the clinical bookkeeping, so no score ever lives only inside the model.
+let chatTranscript = [];
+let chatCoverage = {};
+let chatClarifications = {};
+let chatPendingItem = null;
+let chatBusy = false;
+let chatStopped = false;
+let chatTransientFails = 0;
+let crisisCardShown = false;
+
+// Mirrors CRISIS_CONTACTS in backend/routes/chat.py - used only if the server
+// response somehow omits them. Keep both in sync with templates/crisis.html.
+const DEFAULT_CRISIS_CONTACTS = [
+  { name: 'Umang', dial: '03117786264', display: '0311-7786264' },
+  { name: 'NYH Helpdesk', dial: '080069457', display: '0800-69457' },
+  { name: 'Rescue', dial: '1122', display: '1122' }
+];
 
 function selectAssessment(type) {
   currentAssessment = type;
@@ -395,20 +423,293 @@ function startQuestions() {
     goToStage('questions');
     renderQuestion();
   } else {
-    chatQuestionIndex = 0;
-    isWaitingForClarification = false;
-    goToStage('chat');
-    document.getElementById('screening-chat-window').innerHTML = '';
-    
-    // Welcome greeting
-    const isUr = getCurrentLang() === 'ur';
-    const welcomeText = isUr 
-      ? "خوش آمدید! ہم یہ اسکریننگ گفتگو کے ذریعے کریں گے۔ میں آپ سے کچھ سوال پوچھوں گا، آپ اپنے جذبات کا کھل کر اظہار کریں۔"
-      : "Welcome! We will conduct this screening through chat. I will ask you a few questions, feel free to reply in your own words.";
-    appendChatBubble('bot', welcomeText);
-    
-    setTimeout(askNextChatQuestion, 800);
+    startConversation();
   }
+}
+
+// ────────────────────────────────────────────────────────
+// Conversational Chat Mode
+// ────────────────────────────────────────────────────────
+async function startConversation() {
+  chatTranscript = [];
+  chatCoverage = {};
+  chatClarifications = {};
+  chatPendingItem = null;
+  chatBusy = false;
+  chatStopped = false;
+  chatTransientFails = 0;
+  crisisCardShown = false;
+
+  hideChatFormOffer();
+  document.getElementById('chat-crisis-card').classList.add('d-none');
+  document.getElementById('screening-chat-window').innerHTML = '';
+  goToStage('chat');
+  updateChatProgress();
+
+  // The opening line is written by the model, not scripted, so the greeting can
+  // already carry the right tone for the language the user is thinking in.
+  await requestScreeningTurn();
+}
+
+function appendChatBubble(sender, text) {
+  const win = document.getElementById('screening-chat-window');
+  const bubble = document.createElement('div');
+  bubble.className = `chat-bubble ${sender} fade-in-up`;
+  bubble.textContent = text;
+  win.appendChild(bubble);
+  win.scrollTop = win.scrollHeight;
+}
+
+function appendTypingBubble() {
+  const win = document.getElementById('screening-chat-window');
+  const bubble = document.createElement('div');
+  bubble.className = 'chat-bubble bot chat-typing';
+  bubble.innerHTML = '<span></span><span></span><span></span>';
+  win.appendChild(bubble);
+  win.scrollTop = win.scrollHeight;
+  return bubble;
+}
+
+function lockChatInput() {
+  const input = document.getElementById('screening-chat-input');
+  const btn = document.getElementById('screening-chat-send-btn');
+  if (input) input.disabled = true;
+  if (btn) btn.disabled = true;
+}
+
+function unlockChatInput() {
+  const input = document.getElementById('screening-chat-input');
+  const btn = document.getElementById('screening-chat-send-btn');
+  if (chatStopped) { lockChatInput(); return; }
+  if (input) input.disabled = false;
+  if (btn) btn.disabled = false;
+}
+
+// Progress is coverage of the clinical topics, never a question counter.
+function updateChatProgress() {
+  const total = currentQuestions.length;
+  const settled = Object.keys(chatCoverage).length;
+  const pct = total ? Math.round((settled / total) * 100) : 0;
+  const bar = document.getElementById('chat-progress');
+  if (bar) bar.style.width = `${pct}%`;
+
+  const note = document.getElementById('chat-coverage-note');
+  if (note) {
+    note.textContent = getCurrentLang() === 'ur'
+      ? `بات چیت جاری ہے — اب تک ${settled} موضوعات واضح ہوئے`
+      : `Conversation in progress - ${settled} of ${total} areas clear so far`;
+  }
+}
+
+async function requestScreeningTurn() {
+  if (chatBusy || chatStopped) return;
+  chatBusy = true;
+  lockChatInput();
+  const typing = appendTypingBubble();
+
+  let data = null;
+  try {
+    data = await Api.chat.screeningTurn({
+      assessment_type: currentAssessment,
+      language: getCurrentLang(),
+      transcript: chatTranscript,
+      prior_coverage: chatCoverage,
+      prior_clarifications: chatClarifications,
+      pending_item: chatPendingItem
+    });
+  } catch (err) {
+    data = { ok: false, reason: 'network', transient: true };
+  }
+
+  typing.remove();
+  chatBusy = false;
+
+  if (!data || data.ok === false) {
+    // The helpline card never waits on the provider: if the local crisis floor
+    // fired, it is shown even when the turn itself failed.
+    if (data && data.crisis) revealChatCrisisCard(data.crisis_contacts);
+
+    if (data && data.transient) {
+      chatTransientFails++;
+      if (chatTransientFails === 1) {
+        appendChatBubble('bot', data.reply || (getCurrentLang() === 'ur'
+          ? 'ایک لمحاتی رکاوٹ — دوبارہ کوشش کر رہی ہوں۔'
+          : 'One moment - trying that again.'));
+        unlockChatInput();
+        setTimeout(() => requestScreeningTurn(), 2500);
+        return;
+      }
+      if (chatTransientFails <= 3) {
+        // Stay conversational: the user can simply say it again, and the server
+        // re-reads the whole transcript anyway.
+        appendChatBubble('bot', getCurrentLang() === 'ur'
+          ? 'شاید انٹرنیٹ ایک لمحہ رک گیا۔ آپ وہی بات دوبارہ بھیج دیں، میں سن رہی ہوں۔'
+          : 'That may have slipped out on the network. Send me that again and I will pick it up.');
+        unlockChatInput();
+        const input = document.getElementById('screening-chat-input');
+        if (input) input.focus();
+        return;
+      }
+    }
+
+    handleChatUnavailable(data);
+    return;
+  }
+
+  chatTransientFails = 0;
+  if (data.coverage) chatCoverage = data.coverage;
+  if (data.clarifications) chatClarifications = data.clarifications;
+
+  const reply = data.reply || '';
+  if (reply) {
+    appendChatBubble('bot', reply);
+    chatTranscript.push({ role: 'assistant', content: reply });
+  }
+
+  // Which topic the server is steering toward next - replayed on the following
+  // turn so the model scores the user's reply against the right item.
+  chatPendingItem = data.target_item || null;
+
+  if (data.crisis) revealChatCrisisCard(data.crisis_contacts);
+  updateChatProgress();
+
+  if (data.complete) {
+    finishConversation();
+  } else if (data.over_limit) {
+    handleChatOverLimit();
+  } else {
+    unlockChatInput();
+    const input = document.getElementById('screening-chat-input');
+    if (input) input.focus();
+  }
+}
+
+function sendScreeningChatMessage(e) {
+  e.preventDefault();
+  if (chatBusy || chatStopped) return;
+  const input = document.getElementById('screening-chat-input');
+  const reply = input.value.trim();
+  if (!reply) return;
+
+  appendChatBubble('user', reply);
+  chatTranscript.push({ role: 'user', content: reply });
+  input.value = '';
+  requestScreeningTurn();
+}
+
+// Enter sends, Shift+Enter adds the line break a real message often needs.
+function handleScreeningChatKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendScreeningChatMessage(e);
+  }
+}
+
+function revealChatCrisisCard(contacts) {
+  if (crisisCardShown) return;
+  crisisCardShown = true;
+
+  const isUr = getCurrentLang() === 'ur';
+  const list = (Array.isArray(contacts) && contacts.length ? contacts : DEFAULT_CRISIS_CONTACTS)
+    .map(c => `
+      <a class="chat-crisis-chip" href="tel:${c.dial}">
+        <i class="fas fa-phone-alt" aria-hidden="true"></i>
+        <span>${c.name} · ${c.display}</span>
+      </a>`)
+    .join('');
+
+  const card = document.getElementById('chat-crisis-card');
+  card.innerHTML = `
+    <p class="chat-crisis-title">${isUr ? 'آپ کی حفاظت سب سے پہلے' : 'Your safety comes first'}</p>
+    <p class="chat-crisis-text">${isUr
+      ? 'آپ نے جو کچھ بتایا اسے ہم نے سنجیدگی سے لیا ہے۔ گفتگو جاری رکھیں — اور ابھی کسی اصل انسان سے بات کرنے کے لیے یہ نمبر مفت اور خفیہ ہیں۔'
+      : 'What you shared has been taken seriously. Please keep talking with us — and right now you can also reach a real person on these free, confidential lines.'}</p>
+    <div class="chat-crisis-chips">${list}</div>`;
+  card.classList.remove('d-none');
+
+  const win = document.getElementById('screening-chat-window');
+  win.scrollTop = win.scrollHeight;
+}
+
+function hideChatFormOffer() {
+  const box = document.getElementById('chat-form-offer');
+  if (box) { box.classList.add('d-none'); box.innerHTML = ''; }
+}
+
+function offerFormMode(note) {
+  const isUr = getCurrentLang() === 'ur';
+  const box = document.getElementById('chat-form-offer');
+  if (!box) return;
+  box.innerHTML = `
+    <p class="chat-offer-note">${note || (isUr
+      ? 'آپ یہ جانچ مختصر فارم کے ذریعے مکمل کر سکتے ہیں۔'
+      : 'You can finish this check using the short written form.')}</p>
+    <button type="button" class="btn btn-zs-primary" onclick="continueInFormMode()">
+      ${isUr ? 'مختصر فارم سے مکمل کریں' : 'Finish with the short form'}
+    </button>`;
+  box.classList.remove('d-none');
+}
+
+// Decision: if the LLM is down we say so plainly and offer the form. We never
+// fake empathy with scripted keyword replies.
+function handleChatUnavailable(data) {
+  const isUr = getCurrentLang() === 'ur';
+  chatStopped = true;
+
+  const msg = (data && data.reply) || (isUr
+    ? 'ابھی بات چیت ممکن نہیں ہو سکی۔ آپ مختصر فارم سے یہ جانچ مکمل کر سکتے ہیں۔'
+    : 'The conversation could not continue just now. You can finish this check with the short written form.');
+  appendChatBubble('bot', msg);
+
+  offerFormMode(isUr
+    ? 'بات چیت یہاں رکھی جا سکتی ہے۔ باقی موضوعات مختصر فارم پر مکمل کر لیں۔'
+    : 'We can pause the conversation here and finish the remaining items on the written form.');
+  lockChatInput();
+}
+
+function handleChatOverLimit() {
+  const isUr = getCurrentLang() === 'ur';
+  chatStopped = true;
+  offerFormMode(isUr
+    ? 'آپ نے کھل کر بات کی، شکریہ۔ باقی چند موضوعات فارم پر تیزی سے مکمل ہو جائیں گے۔'
+    : 'Thank you for sharing so much. A few remaining areas can be ticked off quickly on the written form.');
+  lockChatInput();
+}
+
+// Bridge back to the form without discarding anything the conversation settled.
+function continueInFormMode() {
+  answers = currentQuestions.map((_, i) => {
+    const entry = chatCoverage[`q${i + 1}`];
+    return entry && Number.isInteger(entry.score) ? entry.score : null;
+  });
+
+  const firstUnanswered = answers.findIndex(a => a === null);
+  if (firstUnanswered === -1) { submitScreening(); return; }
+
+  currentQuestionIndex = firstUnanswered;
+  currentAssessmentMode = 'form';
+  chatStopped = true;
+  hideChatFormOffer();
+  goToStage('questions');
+  renderQuestion();
+}
+
+function finishConversation() {
+  chatStopped = true;
+  lockChatInput();
+  hideChatFormOffer();
+
+  const ordered = currentQuestions.map((_, i) => {
+    const entry = chatCoverage[`q${i + 1}`];
+    return entry && Number.isInteger(entry.score) ? entry.score : null;
+  });
+
+  // An unanswered item must never default to 0 ("not at all") - that would
+  // silently under-report. Hand it to the form instead.
+  if (ordered.some(v => v === null)) { continueInFormMode(); return; }
+
+  answers = ordered;
+  setTimeout(submitScreening, 700);
 }
 
 // ────────────────────────────────────────────────────────
@@ -483,101 +784,6 @@ function prevQuestion() {
   if (currentQuestionIndex > 0) {
     currentQuestionIndex--;
     renderQuestion();
-  }
-}
-
-// ────────────────────────────────────────────────────────
-// Conversational Chat Mode
-// ────────────────────────────────────────────────────────
-function appendChatBubble(sender, text) {
-  const win = document.getElementById('screening-chat-window');
-  const bubble = document.createElement('div');
-  bubble.className = `chat-bubble ${sender} fade-in-up`;
-  bubble.textContent = text;
-  win.appendChild(bubble);
-  win.scrollTop = win.scrollHeight;
-}
-
-function askNextChatQuestion() {
-  const pct = (chatQuestionIndex / currentQuestions.length) * 100;
-  document.getElementById('chat-progress').style.width = `${pct}%`;
-
-  if (chatQuestionIndex >= currentQuestions.length) {
-    // All questions answered, submit
-    submitScreening();
-    return;
-  }
-
-  const q = currentQuestions[chatQuestionIndex];
-  const isUr = getCurrentLang() === 'ur';
-  const qNum = chatQuestionIndex + 1;
-  
-  const questionPrompt = isUr
-    ? `سوال ${qNum}: ${q.ur}`
-    : `Question ${qNum}: ${q.en}`;
-    
-  appendChatBubble('bot', questionPrompt);
-}
-
-async function sendScreeningChatMessage(e) {
-  e.preventDefault();
-  const input = document.getElementById('screening-chat-input');
-  const btn = document.getElementById('screening-chat-send-btn');
-  const reply = input.value.trim();
-  const isUr = getCurrentLang() === 'ur';
-
-  if (!reply) return;
-
-  // Add user reply to window
-  appendChatBubble('user', reply);
-  input.value = '';
-  
-  // Lock controls
-  input.disabled = true;
-  btn.disabled = true;
-
-  // Show processing bubble
-  appendChatBubble('bot', '...');
-  const win = document.getElementById('screening-chat-window');
-  const loaderBubble = win.lastChild;
-
-  const currentQ = currentQuestions[chatQuestionIndex];
-  const questionText = isUr ? currentQ.ur : currentQ.en;
-
-  try {
-    const data = await Api.chat.extractScore({
-      assessment_type: currentAssessment,
-      question: questionText,
-      reply: reply
-    });
-
-    // Remove loader
-    win.removeChild(loaderBubble);
-
-    const score = data.score;
-    const needsClarification = data.needs_clarification;
-
-    // Question 9 (self-harm) no longer hard-redirects mid-test. The crisis flag is
-    // decided server-side and surfaced as a banner on the results screen, so the
-    // user still receives their score, severity and per-model confidences.
-    if (needsClarification || score === null || score === undefined) {
-      const followUp = isUr
-        ? "براہ کرم وضاحت کریں کہ یہ کیفیت کتنی کثرت سے ہوتی ہے (مثلاً: بالکل نہیں، کبھی کبھی، آدھے سے زیادہ دن، یا روزانہ)؟"
-        : "Could you clarify how often this happens? (e.g., not at all, sometimes, more than half the days, or nearly every day)";
-      appendChatBubble('bot', followUp);
-    } else {
-      answers[chatQuestionIndex] = score;
-      chatQuestionIndex++;
-      setTimeout(askNextChatQuestion, 800);
-    }
-
-  } catch (err) {
-    win.removeChild(loaderBubble);
-    showFlash(err.message || 'Error understanding response. Please try again.', 'error');
-  } finally {
-    input.disabled = false;
-    btn.disabled = false;
-    input.focus();
   }
 }
 
@@ -694,8 +900,16 @@ function resetScreening() {
   currentQuestions = [];
   answers = [];
   currentQuestionIndex = 0;
-  chatQuestionIndex = 0;
-  isWaitingForClarification = false;
+  chatTranscript = [];
+  chatCoverage = {};
+  chatClarifications = {};
+  chatPendingItem = null;
+  chatBusy = false;
+  chatStopped = false;
+  chatTransientFails = 0;
+  crisisCardShown = false;
+  hideChatFormOffer();
+  document.getElementById('chat-crisis-card').classList.add('d-none');
   document.getElementById('consent-check').checked = false;
   document.getElementById('consent-next-btn').disabled = true;
   goToStage('select');
@@ -804,5 +1018,96 @@ html[dir="rtl"] .consent-info-box {
   max-width: 600px;
   margin: 0 auto;
 }
+
+/* ── Conversational screening mode ── */
+.chat-coverage-note {
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  text-align: center;
+}
+.chat-textarea {
+  resize: none;
+  line-height: 1.6;
+  font-size: 0.95rem;
+  max-height: 140px;
+}
+.chat-input:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Typing indicator while the counsellor is composing */
+.chat-typing { display: inline-flex; gap: 5px; align-items: center; padding: 1rem 1.2rem; }
+.chat-typing span {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--brand-lavender);
+  opacity: 0.45;
+  animation: chat-typing-bounce 1.1s infinite ease-in-out;
+}
+.chat-typing span:nth-child(2) { animation-delay: 0.16s; }
+.chat-typing span:nth-child(3) { animation-delay: 0.32s; }
+@keyframes chat-typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.35; }
+  30% { transform: translateY(-5px); opacity: 0.9; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-typing span { animation: none; opacity: 0.7; }
+}
+
+/* Crisis card revealed inline, without interrupting the conversation */
+.chat-crisis-card {
+  border-radius: var(--radius-sm);
+  border: 1.5px solid rgba(163, 74, 91, 0.35);
+  background: rgba(163, 74, 91, 0.07);
+  padding: 1rem 1.1rem;
+}
+html[dir="rtl"] .chat-crisis-card { border-left: none; }
+.chat-crisis-title {
+  margin: 0 0 0.35rem;
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: #a34a5b;
+}
+.chat-crisis-text {
+  margin: 0 0 0.75rem;
+  font-size: 0.88rem;
+  line-height: 1.7;
+  color: var(--text-main);
+}
+.chat-crisis-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.chat-crisis-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  background: var(--brand-green);
+  color: var(--brand-cream) !important;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+.chat-crisis-chip:hover { filter: brightness(1.08); }
+
+/* Hand-over card: LLM unavailable, or the conversation ran past its budget */
+.chat-form-offer {
+  border-radius: var(--radius-sm);
+  border: 1px dashed rgba(131, 151, 145, 0.5);
+  background: var(--bg-card);
+  padding: 0.9rem 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.chat-offer-note {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+  flex: 1 1 220px;
+}
+[data-theme="dark"] .chat-crisis-card { border-color: rgba(219, 138, 154, 0.4); background: rgba(219, 138, 154, 0.09); }
+[data-theme="dark"] .chat-crisis-title { color: #dba9b4; }
+[data-theme="dark"] .chat-form-offer { background: rgba(255,255,255,0.04); }
 </style>
 {% endblock %}

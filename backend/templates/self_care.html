@@ -1,257 +1,749 @@
 {% extends 'base.html' %}
-{% block title %}خود کی دیکھ بھال — Self-Care Hub{% endblock %}
-{% block meta_description %}ذہنی صحت کے لیے عملی خودِ دیکھ بھال کے طریقے — CBT ورک شیٹس، گراؤنڈنگ مشقیں اور نیند کے معمولات۔{% endblock %}
+{% block title %}سیلف کیئر — Self-Care Tools{% endblock %}
+{% block meta_description %}روزمرہ کے لیے پُرسکون خودِ دیکھ بھال کے اوزار — باکس بریتھنگ، گراؤنڈنگ، نیند کی آوازیں اور مثبت خیالات۔{% endblock %}
 
 {% block content %}
-<div class="container section-padding" style="max-width: 900px;">
+<div class="container section-padding" style="max-width: 980px;">
   <h2 class="section-title text-center"
-      data-ur="اپنی دیکھ بھال کے طریقے"
-      data-en="Self-Care Techniques">اپنی دیکھ بھال کے طریقے</h2>
+      data-ur="روزمرہ کے چھوٹے اوزار"
+      data-en="Everyday Coping Tools">روزمرہ کے چھوٹے اوزار</h2>
   <p class="section-subtitle text-center"
-     data-ur="تسکینِ قلب، بہتر نیند، اور ذہنی صحت کو بہتر بنانے کے وہ عملی طریقے جو آپ خود آزما سکتے ہیں۔"
-     data-en="Practical grounding, breathing, sleep and thought-work exercises you can try on your own, any time.">تسکینِ قلب، بہتر نیند، اور ذہنی صحت کو بہتر بنانے کے وہ عملی طریقے جو آپ خود آزما سکتے ہیں۔</p>
+     data-ur="عام دنوں کے لیے ایک پُرسکون کونا — نہ کوئی اسکور، نہ کوئی جلدی۔ جس اوزار کی ضرورت ہو، جب ضرورت ہو، بس وہی کھولیں۔"
+     data-en="A calm corner for ordinary, heavy days — no scores, no pressure. Open whichever tool you need, whenever you need it.">عام دنوں کے لیے ایک پُرسکون کونا — نہ کوئی اسکور، نہ کوئی جلدی۔ جس اوزار کی ضرورت ہو، جب ضرورت ہو، بس وہی کھولیں۔</p>
 
-  <!-- ─── Bridge to real-world help (therapists / hospitals / helplines) ─── -->
-  <a href="{{ url_for('resources') }}" class="self-care-bridge" role="link"
-     aria-label="Looking for real help? Go to Resources">
-    <div class="scb-icon" aria-hidden="true"><i class="fas fa-life-ring"></i></div>
-    <div class="scb-text">
-      <span class="scb-title"
-            data-ur="کیا آپ کسی اصل انسان سے بات کرنا چاہتے ہیں؟"
-            data-en="Need to talk to a real person?">کیا آپ کسی اصل انسان سے بات کرنا چاہتے ہیں؟</span>
-      <span class="scb-sub"
-            data-ur="ہیلپ لائنز، تھراپسٹس اور قریبی ہسپتالوں کے لیے 'وسائل' پر جائیں۔"
-            data-en="Go to Resources for crisis helplines, therapists near you, and hospital psychiatry OPDs.">ہیلپ لائنز، تھراپسٹس اور قریبی ہسپتالوں کے لیے 'وسائل' پر جائیں۔</span>
+  <div class="row g-4">
+
+    <!-- ═══════════ 1 · Box Breathing ═══════════ -->
+    <div class="col-12">
+      <div class="glass-card tool-card" id="tool-breathing">
+        <button class="tool-head" onclick="toggleTool('breathing-body', this)" aria-expanded="false" aria-controls="breathing-body">
+          <div class="tool-icon tool-icon-breath" aria-hidden="true"><i class="fas fa-wind"></i></div>
+          <div class="tool-headtext">
+            <h3 class="tool-title" data-ur="باکس بریتھنگ" data-en="Box Breathing">باکس بریتھنگ</h3>
+            <p class="tool-desc"
+               data-ur="چار گنتی اندر، روکیں، باہر، ٹھہریں — بس دائرے کے ساتھ چلیں۔"
+               data-en="Four counts in, hold, out, rest — just follow the circle.">چار گنتی اندر، روکیں، باہر، ٹھہریں — بس دائرے کے ساتھ چلیں۔</p>
+          </div>
+          <i class="fas fa-chevron-down tool-caret" aria-hidden="true"></i>
+        </button>
+        <div class="tool-body d-none" id="breathing-body">
+          <div class="breath-stage">
+            <div class="breath-circle" id="breath-circle">
+              <span class="breath-phase" id="breath-phase" aria-live="polite"></span>
+            </div>
+          </div>
+          <p class="breath-round text-center" id="breath-round" aria-hidden="true"></p>
+          <div class="tool-controls">
+            <button class="btn btn-zs-primary" onclick="breathStartPause()" id="breath-start-btn">
+              <i class="fas fa-play" aria-hidden="true"></i>
+              <span id="breath-start-label">شروع کریں</span>
+            </button>
+            <button class="btn btn-zs-outline" onclick="breathReset()">
+              <i class="fas fa-rotate-left" aria-hidden="true"></i>
+              <span data-ur="دوبارہ" data-en="Reset">دوبارہ</span>
+            </button>
+            <button class="btn btn-zs-outline" onclick="toggleBreathSound()" id="breath-sound-btn" aria-pressed="false">
+              <i class="fas fa-volume-xmark" id="breath-sound-icon" aria-hidden="true"></i>
+              <span data-ur="پرسکون آواز" data-en="Calming sound">پرسکون آواز</span>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="scb-cta" aria-hidden="true">
-      <span data-ur="کھولیں" data-en="Open">کھولیں</span>
-      <i class="fas fa-arrow-right"></i>
+
+    <!-- ═══════════ 2 · A Gentler Angle (CBT reframing) ═══════════ -->
+    <div class="col-md-6">
+      <div class="glass-card tool-card" id="tool-reframe">
+        <button class="tool-head" onclick="toggleTool('reframe-body', this)" aria-expanded="false" aria-controls="reframe-body">
+          <div class="tool-icon tool-icon-reframe" aria-hidden="true"><i class="fas fa-lightbulb"></i></div>
+          <div class="tool-headtext">
+            <h3 class="tool-title" data-ur="سوچ کا دوسرا رخ" data-en="A Gentler Angle">سوچ کا دوسرا رخ</h3>
+            <p class="tool-desc"
+               data-ur="ہر بھاری خیال کا ایک اور پہلو بھی ہوتا ہے — آہستہ سے دیکھیے۔"
+               data-en="Every heavy thought has another side — take a gentle look.">ہر بھاری خیال کا ایک اور پہلو بھی ہوتا ہے — آہستہ سے دیکھیے۔</p>
+          </div>
+          <i class="fas fa-chevron-down tool-caret" aria-hidden="true"></i>
+        </button>
+        <div class="tool-body d-none" id="reframe-body">
+          <div class="reframe-box" id="reframe-box">
+            <p class="reframe-label"
+               data-ur="ایک خیال جو اکثر آتا ہے"
+               data-en="A thought that visits many of us">ایک خیال جو اکثر آتا ہے</p>
+            <blockquote class="reframe-thought" id="reframe-thought"></blockquote>
+            <p class="reframe-label"
+               data-ur="ایک نرم زاویہ"
+               data-en="A gentler way to see it">ایک نرم زاویہ</p>
+            <p class="reframe-answer" id="reframe-answer" aria-live="polite"></p>
+          </div>
+          <div class="tool-controls">
+            <button class="btn btn-zs-outline" onclick="anotherReframe()">
+              <i class="fas fa-shuffle" aria-hidden="true"></i>
+              <span data-ur="کوئی اور خیال" data-en="Another thought">کوئی اور خیال</span>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
-  </a>
 
-  <!-- Category tabs -->
-  <div class="resource-tabs justify-content-center mt-4">
-    <button class="resource-tab-btn active" onclick="filterCategory('all')"
-            data-ur="تمام طریقے" data-en="All Techniques">تمام طریقے</button>
-    <button class="resource-tab-btn" onclick="filterCategory('cbt')"
-            data-ur="نفسیاتی طریقے (CBT)" data-en="CBT Practices">نفسیاتی طریقے (CBT)</button>
-    <button class="resource-tab-btn" onclick="filterCategory('grounding')"
-            data-ur="پرسکون ہونے کے طریقے" data-en="Grounding Exercises">پرسکون ہونے کے طریقے</button>
-    <button class="resource-tab-btn" onclick="filterCategory('sleep')"
-            data-ur="بہتر نیند کے طریقے" data-en="Sleep Hygiene">بہتر نیند کے طریقے</button>
-  </div>
-
-  <div class="row g-4 mt-2" id="resources-container">
-    <!-- Technique cards will be dynamically populated/filtered here -->
-  </div>
-
-  <!-- ─── Medical disclaimer ──────────────────────────────────────── -->
-  <div class="glass-card disclaimer-card p-3 mt-5" role="note">
-    <div class="disclaimer-title">
-      <i class="fas fa-circle-info" aria-hidden="true"></i>
-      <span data-ur="محفوظ استعمال" data-en="Safe Use">محفوظ استعمال</span>
+    <!-- ═══════════ 3 · Grounding 5-4-3-2-1 ═══════════ -->
+    <div class="col-md-6">
+      <div class="glass-card tool-card" id="tool-grounding">
+        <button class="tool-head" onclick="toggleTool('grounding-body', this)" aria-expanded="false" aria-controls="grounding-body">
+          <div class="tool-icon tool-icon-ground" aria-hidden="true"><i class="fas fa-hand-holding-heart"></i></div>
+          <div class="tool-headtext">
+            <h3 class="tool-title" data-ur="گراؤنڈنگ — ۵۴۳۲۱" data-en="Grounding · 5-4-3-2-1">گراؤنڈنگ — ۵۴۳۲۱</h3>
+            <p class="tool-desc"
+               data-ur="حواس کے ذریعے حال میں واپس آئیے — ایک قدم ایک وقت میں۔"
+               data-en="Come back to the present through your senses — one step at a time.">حواس کے ذریعے حال میں واپس آئیے — ایک قدم ایک وقت میں۔</p>
+          </div>
+          <i class="fas fa-chevron-down tool-caret" aria-hidden="true"></i>
+        </button>
+        <div class="tool-body d-none" id="grounding-body">
+          <div class="ground-box">
+            <div class="ground-inner" id="ground-inner">
+              <div class="ground-count" id="ground-count" aria-hidden="true">۵</div>
+              <div class="ground-instruction" id="ground-instruction" aria-live="polite"></div>
+              <p class="ground-hint" id="ground-hint"></p>
+            </div>
+            <div class="ground-dots" id="ground-dots" aria-hidden="true"></div>
+          </div>
+          <div class="tool-controls">
+            <button class="btn btn-zs-primary" onclick="groundNext()" id="ground-next-btn">
+              <span id="ground-next-label">اگلا</span>
+              <i class="fas fa-arrow-left" id="ground-next-arrow" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
-    <p class="mb-0"
-       data-ur="یہ خود کی دیکھ بھال کے طریقے مددگار ہیں مگر علاج کا متبادل نہیں۔ اگر تکلیف مسلسل ہے یا بڑھ رہی ہے تو 'وسائل' والے صفحے سے مصدقہ ماہرِ نفسیات یا سائیکیاٹرسٹ سے رابطہ کریں۔ ہنگامی صورت میں Rescue 1122 یا Umang 0311-7786264 پر فون کریں۔"
-       data-en="These self-care techniques help, but they are not a substitute for treatment. If distress persists or worsens, please reach out to a licensed professional via the Resources page. In an emergency, call Rescue 1122 or Umang at 0311-7786264.">یہ خود کی دیکھ بھال کے طریقے مددگار ہیں مگر علاج کا متبادل نہیں۔ اگر تکلیف مسلسل ہے یا بڑھ رہی ہے تو 'وسائل' والے صفحے سے مصدقہ ماہرِ نفسیات یا سائیکیاٹرسٹ سے رابطہ کریں۔ ہنگامی صورت میں Rescue 1122 یا Umang 0311-7786264 پر فون کریں۔</p>
+
+    <!-- ═══════════ 4 · Sleep Sounds ═══════════ -->
+    <div class="col-md-6">
+      <div class="glass-card tool-card" id="tool-sleep">
+        <button class="tool-head" onclick="toggleTool('sleep-body', this)" aria-expanded="false" aria-controls="sleep-body">
+          <div class="tool-icon tool-icon-sleep" aria-hidden="true"><i class="fas fa-moon"></i></div>
+          <div class="tool-headtext">
+            <h3 class="tool-title" data-ur="نیند کی آوازیں" data-en="Sleep Sounds">نیند کی آوازیں</h3>
+            <p class="tool-desc"
+               data-ur="نیند کے لیے پرسکون آوازیں — بس ایک منتخب کریں اور آنکھیں بند کر لیں۔"
+               data-en="Calming sounds for sleep — just pick one and close your eyes.">نیند کے لیے پرسکون آوازیں — بس ایک منتخب کریں اور آنکھیں بند کر لیں۔</p>
+          </div>
+          <i class="fas fa-chevron-down tool-caret" aria-hidden="true"></i>
+        </button>
+        <div class="tool-body d-none" id="sleep-body">
+          <div class="sleep-list" role="group" aria-label="Sleep sounds">
+            <button class="sleep-item" id="sleep-rain" onclick="toggleSleepSound('rain')" aria-pressed="false">
+              <i class="fas fa-cloud-rain" aria-hidden="true"></i>
+              <span data-ur="بارش" data-en="Rain">بارش</span>
+              <i class="fas fa-play sleep-state" aria-hidden="true"></i>
+            </button>
+            <button class="sleep-item" id="sleep-white" onclick="toggleSleepSound('white')" aria-pressed="false">
+              <i class="fas fa-wave-square" aria-hidden="true"></i>
+              <span data-ur="وائٹ نوائز" data-en="White noise">وائٹ نوائز</span>
+              <i class="fas fa-play sleep-state" aria-hidden="true"></i>
+            </button>
+            <button class="sleep-item" id="sleep-tone" onclick="toggleSleepSound('tone')" aria-pressed="false">
+              <i class="fas fa-music" aria-hidden="true"></i>
+              <span data-ur="نرم سرگونا" data-en="Soft tone">نرم سرگونا</span>
+              <i class="fas fa-play sleep-state" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ 5 · A Thought for Today ═══════════ -->
+    <div class="col-md-6">
+      <div class="glass-card tool-card" id="tool-affirm">
+        <button class="tool-head" onclick="toggleTool('affirm-body', this)" aria-expanded="false" aria-controls="affirm-body">
+          <div class="tool-icon tool-icon-affirm" aria-hidden="true"><i class="fas fa-heart"></i></div>
+          <div class="tool-headtext">
+            <h3 class="tool-title" data-ur="آج کا خیال" data-en="A Thought for Today">آج کا خیال</h3>
+            <p class="tool-desc"
+               data-ur="ایک نرم یاد دہانی — جب بھی دل چاہے۔"
+               data-en="A gentle reminder — whenever you need one.">ایک نرم یاد دہانی — جب بھی دل چاہے۔</p>
+          </div>
+          <i class="fas fa-chevron-down tool-caret" aria-hidden="true"></i>
+        </button>
+        <div class="tool-body d-none" id="affirm-body">
+          <blockquote class="affirm-text" id="affirm-text" aria-live="polite"></blockquote>
+          <div class="tool-controls">
+            <button class="btn btn-zs-outline" onclick="newAffirmation()">
+              <i class="fas fa-rotate" aria-hidden="true"></i>
+              <span data-ur="نیا خیال" data-en="New thought">نیا خیال</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-// Self-care techniques only. Crisis lines, therapist platforms and hospital
-// OPDs live under /resources so users searching for "real help" find one
-// authoritative location instead of two partial ones.
-const SELF_CARE_DATA = [
-  {
-    category: "cbt",
-    title: { ur: "خیالات کا جائزہ (Thought Record)", en: "Thought Record Worksheet" },
-    desc: {
-      ur: "اپنے منفی اور پریشان کن خیالات کو لکھیں اور ان کی سچائی کا حقیقت پسندانہ جائزہ لیں۔",
-      en: "Document your negative thoughts, identify cognitive distortions, and rewrite them with realistic alternatives."
-    },
-    icon: "fa-pencil-alt"
-  },
-  {
-    category: "cbt",
-    title: { ur: "رویہ کی تبدیلی (Behavioral Activation)", en: "Behavioral Activation" },
-    desc: {
-      ur: "روزانہ ایک چھوٹی اور خوشگوار سرگرمی کا انتخاب کریں جو آپ کو خوشی یا طمانیت دے۔",
-      en: "Select and schedule small, meaningful activities daily to improve positive reinforcement and mood."
-    },
-    icon: "fa-calendar-check"
-  },
-  {
-    category: "grounding",
-    title: { ur: "۵-۴-۳-۲-۱ کا طریقہ (5-4-3-2-1 Technique)", en: "5-4-3-2-1 Grounding Method" },
-    desc: {
-      ur: "اپنے ارد گرد ۵ چیزوں کو دیکھیں، ۴ کو چھوئیں، ۳ کی آواز سنیں، ۲ کو سونگھیں، اور ۱ کا ذائقہ چکھیں۔",
-      en: "Notice 5 things you see, 4 you can touch, 3 you hear, 2 you smell, and 1 you can taste to bring focus back to the present."
-    },
-    icon: "fa-anchor"
-  },
-  {
-    category: "grounding",
-    title: { ur: "پٹھوں کو ڈھیلا چھوڑنا (PMR)", en: "Progressive Muscle Relaxation" },
-    desc: {
-      ur: "جسم کے مختلف پٹھوں کو ۵ سیکنڈ کے لیے سخت کریں اور پھر آہستہ آہستہ ڈھیلا چھوڑ دیں۔",
-      en: "Systematically tense and release muscle groups from your toes to your face to release physical stress."
-    },
-    icon: "fa-spa"
-  },
-  {
-    category: "sleep",
-    title: { ur: "نیند کا معمول (Sleep Hygiene)", en: "Establishing a Sleep Routine" },
-    desc: {
-      ur: "روزانہ ایک ہی وقت پر سونے اور جاگنے کی عادت ڈالیں اور بستر پر جانے سے ۱ گھنٹہ پہلے اسکرین کا استعمال بند کریں۔",
-      en: "Keep consistent sleep-wake times and shut off screens 60 minutes before bedtime to support deep rest."
-    },
-    icon: "fa-bed"
-  },
-  {
-    category: "sleep",
-    title: { ur: "دماغ کو خالی کریں (Brain Dump)", en: "Pre-Sleep Brain Dump" },
-    desc: {
-      ur: "سونے سے پہلے اپنی تمام تر پریشانیاں یا اگلے دن کے کام کاغذ پر لکھ دیں تاکہ دماغ پرسکون ہو سکے۔",
-      en: "Write down your lingering thoughts, fears, or to-do lists before sleeping to clear mental clutter."
-    },
-    icon: "fa-brain"
-  }
-];
+/* Self-Care Tools — all state lives in memory only. Nothing is written to
+   localStorage: a fresh visit is a fresh start, by design. */
+(function () {
+  'use strict';
 
-function filterCategory(cat) {
-  const buttons = document.querySelectorAll('.resource-tab-btn');
-  buttons.forEach(btn => btn.classList.remove('active'));
-  if (window.event && event.target) event.target.classList.add('active');
-  renderSelfCare(cat);
-}
+  const $ = (id) => document.getElementById(id);
+  const lang = () => (typeof getCurrentLang === 'function' ? getCurrentLang() : 'ur');
+  const URDU_DIGITS = '۰۱۲۳۴۵۶۷۸۹';
+  const num = (n) => lang() === 'ur' ? String(n).replace(/\d/g, (d) => URDU_DIGITS[+d]) : String(n);
 
-function renderSelfCare(category = 'all') {
-  const lang = getCurrentLang();
-  const isUr = lang === 'ur';
-  const container = document.getElementById('resources-container');
-  if (!container) return;
-  container.innerHTML = '';
-
-  const filtered = category === 'all'
-    ? SELF_CARE_DATA
-    : SELF_CARE_DATA.filter(r => r.category === category);
-
-  filtered.forEach(res => {
-    const titleText = isUr ? res.title.ur : res.title.en;
-    const descText  = isUr ? res.desc.ur  : res.desc.en;
-
-    const card = document.createElement('div');
-    card.className = 'col-md-6 fade-in-up';
-    card.innerHTML = `
-      <div class="glass-card resource-card p-4 h-100 d-flex flex-column gap-3">
-        <div class="d-flex align-items-center gap-3">
-          <div class="resource-icon"><i class="fas ${res.icon}"></i></div>
-          <h4 class="mb-0 font-weight-bold" style="font-size:1.1rem; color:var(--brand-green-dark);">${titleText}</h4>
-        </div>
-        <p class="text-muted mb-0" style="font-size:0.92rem; line-height:1.65;">${descText}</p>
-      </div>
-    `;
-    container.appendChild(card);
-  });
-}
-
-// Re-render on language toggle so card titles & descriptions swap cleanly.
-if (typeof MutationObserver !== 'undefined') {
-  let currentCategory = 'all';
-  document.querySelectorAll('.resource-tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const on = (btn.getAttribute('onclick') || '');
-      const m = on.match(/filterCategory\(['"]([^'"]+)['"]\)/);
-      if (m) currentCategory = m[1];
-    });
-  });
-  new MutationObserver(() => renderSelfCare(currentCategory))
+  /* ── Dynamic text re-renders when the global language toggle flips ── */
+  const langWatchers = [];
+  const watchLang = (fn) => langWatchers.push(fn);
+  new MutationObserver(() => langWatchers.forEach((f) => f()))
     .observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
-}
 
-document.addEventListener('DOMContentLoaded', () => renderSelfCare('all'));
+  /* ── Cards expand/collapse independently ── */
+  function toggleTool(bodyId, head) {
+    const body = $(bodyId);
+    if (!body) return;
+    const open = body.classList.toggle('d-none') === false;
+    head.setAttribute('aria-expanded', String(open));
+    head.closest('.tool-card').classList.toggle('open', open);
+  }
 
-window.filterCategory = filterCategory;
-window.renderSelfCare = renderSelfCare;
+  /* ═══════════ 1 · Box Breathing (4-4-4-4) ═══════════ */
+  const PHASES = [
+    { ur: 'سانس اندر لیں',        en: 'Inhale', scale: 1.35 },
+    { ur: 'روکے رکھیں',           en: 'Hold',   scale: 1.35 },
+    { ur: 'آہستہ سے باہر نکالیں', en: 'Exhale', scale: 1.0 },
+    { ur: 'ٹھہر جائیں',           en: 'Rest',   scale: 1.0 },
+  ];
+  const PHASE_MS = 4000;
+  const breath = { running: false, idx: 0, round: 1, timer: null };
+  const hum = { on: false, ctx: null, stop: null };
+
+  function breathRender() {
+    const ph = PHASES[breath.idx];
+    const label = $('breath-phase');
+    if (label) {
+      label.textContent = breath.running
+        ? (lang() === 'ur' ? ph.ur : ph.en)
+        : (lang() === 'ur' ? 'تیار ہوں تو شروع کریں' : 'Press start when you are ready');
+    }
+    const round = $('breath-round');
+    if (round) {
+      round.textContent = breath.running
+        ? (lang() === 'ur' ? `چکر ${num(breath.round)}` : `Round ${breath.round}`)
+        : '';
+    }
+    const btn = $('breath-start-label');
+    if (btn) btn.textContent = breath.running
+      ? (lang() === 'ur' ? 'وقفہ' : 'Pause')
+      : (lang() === 'ur' ? 'شروع کریں' : 'Start');
+  }
+
+  function breathStep() {
+    if (!breath.running) return;
+    const ph = PHASES[breath.idx];
+    const circle = $('breath-circle');
+    if (circle) {
+      circle.style.transitionDuration = (PHASE_MS / 1000) + 's';
+      circle.style.transform = `scale(${ph.scale})`;
+    }
+    breathRender();
+    breath.timer = setTimeout(() => {
+      breath.idx = (breath.idx + 1) % PHASES.length;
+      if (breath.idx === 0) breath.round += 1;
+      breathStep();
+    }, PHASE_MS);
+  }
+
+  function breathStartPause() {
+    breath.running = !breath.running;
+    if (breath.running) { breathStep(); } else { clearTimeout(breath.timer); }
+    breathRender();
+  }
+
+  function breathReset() {
+    breath.running = false;
+    clearTimeout(breath.timer);
+    breath.idx = 0;
+    breath.round = 1;
+    const circle = $('breath-circle');
+    if (circle) {
+      circle.style.transitionDuration = '0.6s';
+      circle.style.transform = 'scale(1)';
+    }
+    breathRender();
+  }
+
+  /* Soft synthesized hum — a calm backdrop, nothing clinical. */
+  function startHum() {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return false;
+    const ctx = hum.ctx || (hum.ctx = new AC());
+    if (ctx.state === 'suspended') ctx.resume();
+    const out = ctx.createGain(); out.gain.value = 0;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 500; lp.Q.value = 0.4;
+    // 220 Hz sits in the range small laptop/phone speakers can actually reproduce
+    const o1 = ctx.createOscillator(); o1.type = 'sine'; o1.frequency.value = 220;
+    const o2 = ctx.createOscillator(); o2.type = 'sine'; o2.frequency.value = 222.5; // slow, gentle beating
+    const lfo = ctx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.07;
+    const lfoAmt = ctx.createGain(); lfoAmt.gain.value = 0.04;
+    lfo.connect(lfoAmt); lfoAmt.connect(out.gain);
+    o1.connect(lp); o2.connect(lp); lp.connect(out); out.connect(ctx.destination);
+    o1.start(); o2.start(); lfo.start();
+    out.gain.linearRampToValueAtTime(0.16, ctx.currentTime + 1.5);
+    hum.stop = () => {
+      out.gain.setTargetAtTime(0, ctx.currentTime, 0.4);
+      setTimeout(() => {
+        [o1, o2, lfo].forEach((o) => { try { o.stop(); } catch (e) { /* already stopped */ } });
+        out.disconnect();
+      }, 900);
+    };
+    return true;
+  }
+
+  function renderSoundBtn() {
+    const btn = $('breath-sound-btn');
+    const icon = $('breath-sound-icon');
+    if (btn) btn.setAttribute('aria-pressed', String(hum.on));
+    if (icon) {
+      icon.classList.toggle('fa-volume-xmark', !hum.on);
+      icon.classList.toggle('fa-volume-high', hum.on);
+    }
+  }
+
+  function toggleBreathSound() {
+    hum.on = !hum.on;
+    if (hum.on) {
+      if (!startHum()) hum.on = false;
+    } else if (hum.stop) {
+      hum.stop();
+      hum.stop = null;
+    }
+    renderSoundBtn();
+  }
+
+  /* ═══════════ 2 · A Gentler Angle ═══════════ */
+  const REFRAMES = [
+    { tur: 'میرے ہاتھ سے کچھ بھی ٹھیک نہیں ہوتا۔',
+      ten: 'Nothing I do ever turns out right.',
+      rur: 'کوئی ایک وقت یاد آتا ہے جب کچھ ٹھیک ہوا — چھوٹا سا ہی کیوں نہ ہو؟',
+      ren: 'Can you remember one time something did go right — even something small?' },
+    { tur: 'میری عمر کے سب لوگ مجھ سے کہیں آگے لگتے ہیں۔',
+      ten: 'Everyone my age seems miles ahead of me.',
+      rur: 'آپ کس کے نقشے پر چل رہے ہیں — ان کا، یا اپنا؟',
+      ren: 'Whose map are you walking on — theirs, or yours?' },
+    { tur: 'اگر غلطی ہو گئی تو سب مجھے ہی دیکھیں گے۔',
+      ten: 'If I slip up, everyone will judge me.',
+      rur: 'آپ کسی دوست کی غلطی پر کتنی دیر سوچتے ہیں؟ شاید اتنی ہی دیر کوئی آپ کے بارے میں سوچتا ہے۔',
+      ren: 'How long do you spend thinking about a friend\'s mistake? Others likely give yours the same few seconds.' },
+    { tur: 'مجھے ہر چیز خود سنبھالنی چاہیے۔',
+      ten: 'I should be able to handle everything on my own.',
+      rur: 'کیا آپ کسی پیارے سے بھی یہی توقع رکھتے؟',
+      ren: 'Would you expect this much from someone you love?' },
+    { tur: 'اب کچھ بدلنے والا نہیں۔',
+      ten: 'Nothing is going to change.',
+      rur: 'موسم کی طرح مشکل دور بھی گزرتا ہے۔ آج کا ایک چھوٹا سا قدم کیا ہو سکتا ہے؟',
+      ren: 'Like weather, hard seasons pass. What is one tiny step available to you today?' },
+    { tur: 'میں دوسروں پر بوجھ ہوں۔',
+      ten: 'I am a burden on the people around me.',
+      rur: 'اگر کوئی پیارا مشکل میں ہو تو کیا آپ اسے بوجھ کہتے؟',
+      ren: 'If someone you love were struggling, would you call them a burden?' },
+    { tur: 'کل برا گزرا، تو آج بھی برا ہوگا۔',
+      ten: 'Yesterday was bad, so today will be too.',
+      rur: 'ہر صبح اپنا الگ رنگ رکھتی ہے۔ آج کا ایک پل کچھ اور بھی ہو سکتا ہے۔',
+      ren: 'Each morning carries its own color. One moment of today can still be different.' },
+    { tur: 'ایسا لگتا ہے یہ صرف میرے ساتھ ہوتا ہے۔',
+      ten: 'It feels like this only happens to me.',
+      rur: 'اس وقت بھی کہیں کوئی یہی محسوس کر رہا ہے۔ آپ اسے کیا کہتے؟',
+      ren: 'Right now, someone else is feeling exactly this. What would you say to them?' },
+  ];
+  let reframeIdx = Math.floor(Math.random() * REFRAMES.length);
+
+  function reframeRender() {
+    const r = REFRAMES[reframeIdx];
+    const t = $('reframe-thought');
+    const a = $('reframe-answer');
+    if (t) t.textContent = lang() === 'ur' ? r.tur : r.ten;
+    if (a) a.textContent = lang() === 'ur' ? r.rur : r.ren;
+  }
+
+  function anotherReframe() {
+    let next = reframeIdx;
+    while (next === reframeIdx && REFRAMES.length > 1) {
+      next = Math.floor(Math.random() * REFRAMES.length);
+    }
+    reframeIdx = next;
+    const box = $('reframe-box');
+    if (box) {
+      box.style.opacity = 0;
+      setTimeout(() => { reframeRender(); box.style.opacity = 1; }, 220);
+    } else {
+      reframeRender();
+    }
+  }
+
+  /* ═══════════ 3 · Grounding 5-4-3-2-1 ═══════════ */
+  const GROUND_STEPS = [
+    { n: 5, ur: 'چیزیں جو آپ دیکھ سکتے ہیں', en: 'things you can see',
+      hur: 'آہستہ سے اردگرد دیکھیے — بڑی یا چھوٹی، کوئی بھی پانچ چیزیں۔',
+      hen: 'Look around slowly and name five things, big or small.' },
+    { n: 4, ur: 'چیزیں جنہیں آپ چھو سکتے ہیں', en: 'things you can touch',
+      hur: 'چار چیزیں محسوس کیجیے — کپڑا، میز، یا اپنی سانس کی ہوا۔',
+      hen: 'Notice four things you can feel — fabric, the table, the air on your skin.' },
+    { n: 3, ur: 'آوازیں جو آپ سن سکتے ہیں', en: 'sounds you can hear',
+      hur: 'کن لگائیے — تین آوازیں، دور کی ہوں یا بالکل قریب کی۔',
+      hen: 'Listen for three sounds — far away or right beside you.' },
+    { n: 2, ur: 'خوشبوئیں جو آپ سونگھ سکتے ہیں', en: 'things you can smell',
+      hur: 'دو خوشبویں — چائے، صابن، یا بس کمرے کی ہوا۔',
+      hen: 'Two scents — tea, soap, or simply the air in the room.' },
+    { n: 1, ur: 'چیز جس کا ذائقہ محسوس کر سکتے ہیں', en: 'thing you can taste',
+      hur: 'ایک ذائقہ — پانی کا ایک گھونٹ بھی کافی ہے۔',
+      hen: 'One taste — even a sip of water counts.' },
+  ];
+  const ground = { step: 0 };
+
+  function groundRender() {
+    const s = GROUND_STEPS[ground.step];
+    const isUr = lang() === 'ur';
+    const count = $('ground-count');
+    const ins = $('ground-instruction');
+    const hint = $('ground-hint');
+    const btn = $('ground-next-label');
+    if (count) count.textContent = num(s.n);
+    if (ins) ins.textContent = isUr ? `${num(s.n)} ${s.ur}` : `${s.n} ${s.en}`;
+    if (hint) hint.textContent = isUr ? s.hur : s.hen;
+    if (btn) {
+      btn.textContent = ground.step === GROUND_STEPS.length - 1
+        ? (isUr ? 'دوبارہ شروع کریں' : 'Begin again')
+        : (isUr ? 'اگلا' : 'Next');
+    }
+    const dots = $('ground-dots');
+    if (dots) {
+      dots.innerHTML = GROUND_STEPS
+        .map((_, i) => `<span class="ground-dot${i === ground.step ? ' active' : ''}"></span>`)
+        .join('');
+    }
+  }
+
+  function groundNext() {
+    ground.step = ground.step === GROUND_STEPS.length - 1 ? 0 : ground.step + 1;
+    const inner = $('ground-inner');
+    if (inner) {
+      inner.style.opacity = 0;
+      setTimeout(() => { groundRender(); inner.style.opacity = 1; }, 220);
+    } else {
+      groundRender();
+    }
+  }
+
+  /* ═══════════ 4 · Sleep Sounds (all synthesized in-browser) ═══════════ */
+  const sleep = { ctx: null, current: null, stopFns: {} };
+
+  function sleepCtx() {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    if (!sleep.ctx) sleep.ctx = new AC();
+    if (sleep.ctx.state === 'suspended') sleep.ctx.resume();
+    return sleep.ctx;
+  }
+
+  function noiseBuffer(ctx, seconds) {
+    const len = Math.floor(ctx.sampleRate * (seconds || 2));
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    return buf;
+  }
+
+  function makeSleepSound(kind) {
+    const ctx = sleepCtx();
+    if (!ctx) return null;
+    const out = ctx.createGain(); out.gain.value = 0; out.connect(ctx.destination);
+    const nodes = [];
+
+    if (kind === 'white') {
+      const src = ctx.createBufferSource(); src.buffer = noiseBuffer(ctx, 2); src.loop = true;
+      const g = ctx.createGain(); g.gain.value = 0.5;
+      src.connect(g); g.connect(out); src.start(); nodes.push(src);
+      out.gain.linearRampToValueAtTime(0.13, ctx.currentTime + 1.2);
+    } else if (kind === 'rain') {
+      const src = ctx.createBufferSource(); src.buffer = noiseBuffer(ctx, 3); src.loop = true;
+      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 250;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1200;
+      const g = ctx.createGain(); g.gain.value = 0.7;
+      const lfo = ctx.createOscillator(); lfo.frequency.value = 0.13;
+      const lfoAmt = ctx.createGain(); lfoAmt.gain.value = 0.02;
+      lfo.connect(lfoAmt); lfoAmt.connect(g.gain);
+      src.connect(hp); hp.connect(lp); lp.connect(g); g.connect(out);
+      src.start(); lfo.start(); nodes.push(src, lfo);
+      out.gain.linearRampToValueAtTime(0.22, ctx.currentTime + 1.2);
+    } else if (kind === 'tone') {
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 700;
+      const o1 = ctx.createOscillator(); o1.type = 'sine'; o1.frequency.value = 220;
+      const o2 = ctx.createOscillator(); o2.type = 'sine'; o2.frequency.value = 331;
+      const g1 = ctx.createGain(); g1.gain.value = 0.5;
+      const g2 = ctx.createGain(); g2.gain.value = 0.25;
+      const lfo = ctx.createOscillator(); lfo.frequency.value = 0.09;
+      const lfoAmt = ctx.createGain(); lfoAmt.gain.value = 0.015;
+      lfo.connect(lfoAmt); lfoAmt.connect(out.gain);
+      o1.connect(g1); o2.connect(g2); g1.connect(lp); g2.connect(lp); lp.connect(out);
+      o1.start(); o2.start(); lfo.start(); nodes.push(o1, o2, lfo);
+      out.gain.linearRampToValueAtTime(0.14, ctx.currentTime + 1.5);
+    }
+
+    return {
+      stop() {
+        out.gain.setTargetAtTime(0, ctx.currentTime, 0.35);
+        setTimeout(() => {
+          nodes.forEach((n) => { try { n.stop(); } catch (e) { /* already stopped */ } });
+          out.disconnect();
+        }, 700);
+      },
+    };
+  }
+
+  function renderSleepButtons() {
+    ['rain', 'white', 'tone'].forEach((k) => {
+      const btn = $('sleep-' + k);
+      if (!btn) return;
+      const playing = sleep.current === k;
+      btn.classList.toggle('playing', playing);
+      btn.setAttribute('aria-pressed', String(playing));
+      const ic = btn.querySelector('.sleep-state');
+      if (ic) {
+        ic.classList.toggle('fa-play', !playing);
+        ic.classList.toggle('fa-pause', playing);
+      }
+    });
+  }
+
+  function toggleSleepSound(kind) {
+    if (sleep.current === kind) {
+      if (sleep.stopFns[kind]) sleep.stopFns[kind].stop();
+      sleep.stopFns[kind] = null;
+      sleep.current = null;
+    } else {
+      if (sleep.current && sleep.stopFns[sleep.current]) {
+        sleep.stopFns[sleep.current].stop();
+        sleep.stopFns[sleep.current] = null;
+      }
+      const s = makeSleepSound(kind);
+      if (!s) return;
+      sleep.stopFns[kind] = s;
+      sleep.current = kind;
+    }
+    renderSleepButtons();
+  }
+
+  /* ═══════════ 5 · A Thought for Today ═══════════ */
+  const AFFIRMATIONS = [
+    { ur: 'ٹھیک محسوس نہ کرنا بھی ٹھیک ہے۔',
+      en: 'You don\'t have to feel okay to be okay.' },
+    { ur: 'آرام کمائی نہیں ہوتا — وہ ایک ضرورت ہے۔',
+      en: 'Rest is not something you earn. It is something you need.' },
+    { ur: 'آپ اب تک کے ہر مشکل دن سے گزر چکے ہیں۔',
+      en: 'You have made it through every hard day so far.' },
+    { ur: 'چھوٹے قدم بھی آگے ہی لے جاتے ہیں۔',
+      en: 'Small steps still move you forward.' },
+    { ur: 'دوبارہ شروع کرنا، جتنی بار بھی ضرورت ہو، جائز ہے۔',
+      en: 'You are allowed to begin again, as many times as it takes.' },
+    { ur: 'آپ کی رفتار کوئی دوڑ نہیں۔',
+      en: 'Your pace is not a race.' },
+    { ur: 'جذبات مہمان ہیں — آتے ہیں اور چلے جاتے ہیں۔',
+      en: 'Feelings are visitors; they come, and they go.' },
+    { ur: 'اپنے ساتھ نرمی بھی ایک قسم کی طاقت ہے۔',
+      en: 'Being gentle with yourself is its own kind of strength.' },
+    { ur: 'آپ اس ایک مشکل لمحے سے کہیں بڑے ہیں۔',
+      en: 'You are more than this difficult moment.' },
+    { ur: 'کچھ دنوں میں بس دن گزار دینا بھی کامیابی ہے۔',
+      en: 'Some days, simply getting through the day is the achievement.' },
+  ];
+  let affirmIdx = Math.floor(Math.random() * AFFIRMATIONS.length);
+
+  function affirmRender() {
+    const a = AFFIRMATIONS[affirmIdx];
+    const el = $('affirm-text');
+    if (el) el.textContent = lang() === 'ur' ? a.ur : a.en;
+  }
+
+  function newAffirmation() {
+    let next = affirmIdx;
+    while (next === affirmIdx && AFFIRMATIONS.length > 1) {
+      next = Math.floor(Math.random() * AFFIRMATIONS.length);
+    }
+    affirmIdx = next;
+    const el = $('affirm-text');
+    if (el) {
+      el.style.opacity = 0;
+      setTimeout(() => { affirmRender(); el.style.opacity = 1; }, 220);
+    } else {
+      affirmRender();
+    }
+  }
+
+  /* ── Wire up ── */
+  watchLang(breathRender);
+  watchLang(reframeRender);
+  watchLang(groundRender);
+  watchLang(affirmRender);
+
+  document.addEventListener('DOMContentLoaded', () => {
+    breathRender();
+    reframeRender();
+    groundRender();
+    affirmRender();
+    renderSleepButtons();
+    renderSoundBtn();
+  });
+
+  window.toggleTool = toggleTool;
+  window.breathStartPause = breathStartPause;
+  window.breathReset = breathReset;
+  window.toggleBreathSound = toggleBreathSound;
+  window.anotherReframe = anotherReframe;
+  window.groundNext = groundNext;
+  window.toggleSleepSound = toggleSleepSound;
+  window.newAffirmation = newAffirmation;
+})();
 </script>
 
 <style>
-.resource-card {
-  border: 1px solid rgba(131,151,145,0.2);
+/* ── Tool cards: scannable grid, each independently expandable ── */
+.tool-card { padding: 0; overflow: hidden; border: 1px solid rgba(131,151,145,.2); transition: var(--transition); height: 100%; }
+.tool-card:hover { border-color: rgba(101,88,122,.35); }
+.tool-card.open { border-color: var(--brand-lavender); box-shadow: var(--shadow-lg); }
+
+.tool-head {
+  display: flex; align-items: center; gap: 1rem;
+  width: 100%; padding: 1.15rem 1.25rem;
+  background: none; border: none; cursor: pointer;
+  text-align: start; color: inherit; font: inherit;
+}
+.tool-headtext { flex: 1; min-width: 0; }
+.tool-title { margin: 0 0 .2rem; font-size: 1.08rem; color: var(--brand-green-dark); }
+.tool-desc { margin: 0; font-size: .88rem; color: var(--text-muted); line-height: 1.55; }
+.tool-caret { color: var(--text-muted); transition: transform .25s ease; flex-shrink: 0; }
+.tool-card.open .tool-caret { transform: rotate(180deg); color: var(--brand-lavender); }
+
+.tool-icon {
+  width: 46px; height: 46px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 1.15rem;
+}
+.tool-icon-breath  { background: rgba(78,99,94,.14);  color: var(--brand-green); }
+.tool-icon-reframe { background: rgba(101,88,122,.13); color: var(--brand-lavender); }
+.tool-icon-ground  { background: rgba(78,99,94,.14);  color: var(--brand-green); }
+.tool-icon-sleep   { background: rgba(101,88,122,.13); color: var(--brand-lavender); }
+.tool-icon-affirm  { background: rgba(78,99,94,.14);  color: var(--brand-green); }
+
+.tool-body { padding: 0 1.25rem 1.35rem; }
+.tool-controls { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 1rem; }
+.tool-controls .btn { display: inline-flex; align-items: center; gap: .45rem; }
+[aria-pressed="true"].btn-zs-outline { border-color: var(--brand-lavender); color: var(--brand-lavender); }
+
+/* ── Box breathing ── */
+.breath-stage { display: flex; justify-content: center; padding: 1.1rem 0 .2rem; }
+.breath-circle {
+  width: 180px; height: 180px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 35% 30%, rgba(101,88,122,.26), rgba(78,99,94,.30));
+  border: 2px solid rgba(101,88,122,.35);
+  box-shadow: 0 0 0 14px rgba(101,88,122,.07), 0 0 44px rgba(101,88,122,.16);
+  transform: scale(1);
+  transition: transform 4s ease-in-out;
+  will-change: transform;
+}
+.breath-phase {
+  font-weight: 700; font-size: 1.02rem; color: var(--brand-green-dark);
+  text-align: center; padding: 0 1rem; line-height: 1.7;
+}
+.breath-round { margin: .35rem 0 0; font-size: .85rem; color: var(--text-muted); min-height: 1.2em; }
+
+/* ── Reframing ── */
+.reframe-box { transition: opacity .22s ease; }
+.reframe-label {
+  margin: .2rem 0 .3rem; font-size: .78rem; font-weight: 700;
+  letter-spacing: .02em; color: var(--brand-lavender);
+}
+.reframe-thought {
+  margin: 0 0 1rem; padding: .7rem 1rem;
+  border-inline-start: 3px solid rgba(131,151,145,.5);
+  background: rgba(131,151,145,.08);
+  border-radius: var(--radius-xs);
+  font-size: .95rem; line-height: 1.8;
+}
+.reframe-answer {
+  margin: 0; padding: .7rem 1rem;
+  border-inline-start: 3px solid var(--brand-lavender);
+  background: rgba(101,88,122,.08);
+  border-radius: var(--radius-xs);
+  font-size: .95rem; line-height: 1.8; color: var(--text-main);
+}
+
+/* ── Grounding ── */
+.ground-inner {
+  text-align: center; padding: .8rem .5rem .4rem;
+  transition: opacity .22s ease;
+}
+.ground-count {
+  font-size: 3rem; font-weight: 700; line-height: 1.1;
+  color: var(--brand-lavender);
+  font-family: var(--font-latin-heading);
+}
+html[dir="rtl"] .ground-count { font-family: var(--font-ur-heading); }
+.ground-instruction { font-size: 1.05rem; font-weight: 700; color: var(--brand-green-dark); margin-top: .15rem; }
+.ground-hint { margin: .3rem auto 0; max-width: 34ch; font-size: .88rem; color: var(--text-muted); line-height: 1.7; }
+.ground-dots { display: flex; justify-content: center; gap: .45rem; padding-top: .6rem; }
+.ground-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: rgba(131,151,145,.35); transition: var(--transition);
+}
+.ground-dot.active { background: var(--brand-lavender); transform: scale(1.25); }
+#tool-grounding .tool-controls { justify-content: center; }
+
+/* ── Sleep sounds ── */
+.sleep-list { display: flex; flex-direction: column; gap: .55rem; padding-top: .4rem; }
+.sleep-item {
+  display: flex; align-items: center; gap: .8rem;
+  padding: .8rem 1rem; border-radius: var(--radius-sm);
+  border: 1px solid rgba(131,151,145,.25);
+  background: rgba(131,151,145,.06);
+  cursor: pointer; font: inherit; color: inherit; text-align: start;
   transition: var(--transition);
 }
-.resource-card:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-lg);
-  border-color: var(--brand-green);
+.sleep-item:hover { border-color: var(--brand-lavender); }
+.sleep-item.playing {
+  border-color: var(--brand-lavender);
+  background: rgba(101,88,122,.12);
 }
-.resource-icon {
-  width: 48px; height: 48px;
-  background: rgba(101,88,122,0.12);
-  color: var(--brand-lavender);
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.2rem; flex-shrink: 0;
+.sleep-item > i:first-child { width: 1.3rem; text-align: center; color: var(--brand-lavender); }
+.sleep-item > span { flex: 1; font-weight: 600; font-size: .95rem; }
+.sleep-state { color: var(--text-muted); font-size: .85rem; }
+.sleep-item.playing .sleep-state { color: var(--brand-lavender); }
+
+/* ── Affirmations ── */
+.affirm-text {
+  margin: .4rem 0 0; padding: .9rem 1.1rem;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, rgba(78,99,94,.10), rgba(101,88,122,.08));
+  font-size: 1.02rem; line-height: 1.9; color: var(--text-main);
+  transition: opacity .22s ease; min-height: 3.4em;
+  display: flex; align-items: center;
 }
 
-/* ─── "Need real help?" bridge to /resources ─────────────────────── */
-.self-care-bridge {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem 1.2rem;
-  margin-top: .5rem;
-  border-radius: 16px;
-  border: 1px solid rgba(101,88,122,.28);
-  background: linear-gradient(135deg, rgba(101,88,122,.10), rgba(78,99,94,.08));
-  text-decoration: none;
-  color: inherit;
-  transition: transform .12s ease, border-color .12s ease, box-shadow .12s ease;
-}
-.self-care-bridge:hover {
-  transform: translateY(-2px);
-  border-color: var(--brand-lavender, #65587a);
-  box-shadow: 0 8px 20px rgba(31,41,39,.10);
-}
-.scb-icon {
-  width: 44px; height: 44px; border-radius: 12px;
-  background: rgba(101,88,122,.18); color: var(--brand-lavender, #65587a);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.15rem;
-}
-.scb-text { display: flex; flex-direction: column; min-width: 0; }
-.scb-title { font-weight: 700; font-size: .98rem; margin-bottom: .15rem; }
-.scb-sub   { font-size: .86rem; opacity: .82; line-height: 1.5; }
-.scb-cta {
-  display: inline-flex; align-items: center; gap: .4rem;
-  font-weight: 700; font-size: .88rem;
-  color: var(--brand-lavender, #65587a);
-}
-[dir="rtl"] .scb-cta i { transform: rotate(180deg); }
-@media (max-width: 560px) {
-  .self-care-bridge { grid-template-columns: auto 1fr; }
-  .scb-cta { grid-column: 1 / -1; justify-self: start; }
+/* ── Reduced motion: keep the guidance, drop the pulse ── */
+@media (prefers-reduced-motion: reduce) {
+  .breath-circle { transition: none; }
+  .reframe-box, .ground-inner, .affirm-text { transition: none; }
 }
 
-/* ─── Disclaimer ─────────────────────────────────────────────────── */
-.disclaimer-card {
-  background: linear-gradient(135deg, rgba(101,88,122,.08), rgba(78,99,94,.06));
-  border: 1px dashed rgba(131,151,145,.45);
-  font-size: .9rem;
-}
-.disclaimer-title {
-  display: flex; align-items: center; gap: .5rem;
-  font-weight: 700; margin-bottom: .35rem;
-  color: var(--brand-lavender, #65587a);
-}
-
-/* ─── Dark theme ─────────────────────────────────────────────────── */
-[data-theme="dark"] .self-care-bridge { background: linear-gradient(135deg, rgba(101,88,122,.22), rgba(78,99,94,.14)); border-color: rgba(255,255,255,.14); color: #e5e7eb; }
-[data-theme="dark"] .self-care-bridge:hover { border-color: #a597bd; }
-[data-theme="dark"] .scb-icon  { background: rgba(255,255,255,.10); color: #d1d5db; }
-[data-theme="dark"] .scb-cta   { color: #d1d5db; }
+/* ── Dark theme ── */
+[data-theme="dark"] .tool-card { border-color: rgba(255,255,255,.12); }
+[data-theme="dark"] .tool-title { color: #e5e7eb; }
+[data-theme="dark"] .breath-phase { color: #e5e7eb; }
+[data-theme="dark"] .ground-instruction { color: #e5e7eb; }
+[data-theme="dark"] .reframe-thought { background: rgba(255,255,255,.06); }
+[data-theme="dark"] .reframe-answer { background: rgba(255,255,255,.06); color: #e5e7eb; }
+[data-theme="dark"] .sleep-item { background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.14); }
+[data-theme="dark"] .affirm-text { color: #e5e7eb; }
 </style>
 {% endblock %}

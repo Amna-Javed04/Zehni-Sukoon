@@ -135,8 +135,13 @@ async function submitLogin(e) {
   btn.textContent = '...';
   try {
     const user = await handleLogin(email, pass);
-    // Return to the page the user came from (e.g. /screening), else role-based home
-    window.location.href = authNextRedirect() || (user.is_admin ? '/admin' : '/dashboard');
+    // Role decides the landing page. ?next= (return-to) is honored for regular
+    // users, and for admins ONLY when it points back at an admin page — an admin
+    // must never be dropped onto the user dashboard after signing in.
+    const next = authNextRedirect();
+    window.location.href = user.is_admin
+      ? (next && next.startsWith('/admin') ? next : '/admin')
+      : (next || '/dashboard');
   } catch (err) {
     showFlash(err.message || 'Login failed', 'error');
     btn.disabled = false;

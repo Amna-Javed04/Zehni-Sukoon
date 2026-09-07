@@ -18,13 +18,10 @@ services:
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set in .env}
       - DATABASE_URL=postgresql://${POSTGRES_USER:-zehni_user}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@db:5432/${POSTGRES_DB:-zehni_sukoon}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:5173}
-      # LLM provider — set at least one of the two keys below
+      # LLM provider — required for the AI chat features
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - GEMINI_BASE_URL=${GEMINI_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai/}
       - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
-      - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY:-}
-      - DASHSCOPE_BASE_URL=${DASHSCOPE_BASE_URL:-https://dashscope-intl.aliyuncs.com/compatible-mode/v1}
-      - QWEN_MODEL=${QWEN_MODEL:-qwen-plus}
       # Optional: enable password-reset emails (otherwise links are logged)
       - SMTP_HOST=${SMTP_HOST:-}
       - SMTP_PORT=${SMTP_PORT:-587}

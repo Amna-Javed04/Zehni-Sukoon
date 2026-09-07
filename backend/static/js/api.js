@@ -74,6 +74,8 @@ const Api = {
   chat: {
     extractScore: (payload) =>
       apiFetch('/chat/extract-score', { method: 'POST', body: JSON.stringify(payload) }),
+    screeningTurn: (payload) =>
+      apiFetch('/chat/screening-turn', { method: 'POST', body: JSON.stringify(payload) }),
     companion: (message, history) =>
       apiFetch('/chat/companion', { method: 'POST', body: JSON.stringify({ message, history }) }),
   },

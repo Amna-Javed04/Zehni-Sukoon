@@ -1,6 +1,6 @@
 -- ============================================================
 -- Zehni Sukoon — Postgres Schema
--- Run this on your ApsaraDB instance to create all tables.
+-- Run this on your PostgreSQL instance to create all tables.
 -- Table/column names used in SQLAlchemy models are listed
 -- in comments for reference during manual DB administration.
 -- ============================================================

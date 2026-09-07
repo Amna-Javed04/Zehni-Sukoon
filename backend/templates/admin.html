@@ -14,13 +14,19 @@
 
       <!-- Filter controls -->
       <div class="admin-filters">
-        <div class="filter-field">
-          <label for="admin-filter" data-ur="فلٹر:" data-en="Type:">فلٹر:</label>
-          <select id="admin-filter" class="form-control-zs" onchange="loadAdminStats()">
-            <option value="all" data-ur="تمام ٹیسٹ" data-en="All assessments">تمام ٹیسٹ</option>
-            <option value="phq9" data-ur="PHQ-9 (مزاج)" data-en="PHQ-9 (Mood)">PHQ-9 (مزاج)</option>
-            <option value="gad7" data-ur="GAD-7 (گھبراہٹ)" data-en="GAD-7 (Anxiety)">GAD-7 (گھبراہٹ)</option>
-          </select>
+        <div class="filter-field filter-field-slider">
+          <label id="admin-type-label" data-ur="جانچ کی قسم" data-en="Assessment">جانچ کی قسم</label>
+          <div class="seg-slider" id="admin-type-slider" data-active="phq9" role="tablist" aria-labelledby="admin-type-label">
+            <div class="seg-thumb" aria-hidden="true"></div>
+            <button type="button" class="seg-opt" data-value="phq9" role="tab" aria-selected="true" onclick="setAdminType('phq9')">
+              <i class="fas fa-cloud" aria-hidden="true"></i>
+              <span data-ur="ڈپریشن (PHQ-9)" data-en="Depression (PHQ-9)">ڈپریشن (PHQ-9)</span>
+            </button>
+            <button type="button" class="seg-opt" data-value="gad7" role="tab" aria-selected="false" onclick="setAdminType('gad7')">
+              <i class="fas fa-bolt" aria-hidden="true"></i>
+              <span data-ur="گھبراہٹ (GAD-7)" data-en="Anxiety (GAD-7)">گھبراہٹ (GAD-7)</span>
+            </button>
+          </div>
         </div>
         <div class="filter-field">
           <label for="admin-start" data-ur="شروع" data-en="From">شروع</label>
@@ -191,7 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function loadAdminStats() {
-  const filterType = document.getElementById('admin-filter').value;
+  const filterType = document.getElementById('admin-type-slider').dataset.active || 'phq9';
   const start = document.getElementById('admin-start')?.value || '';
   const end   = document.getElementById('admin-end')?.value   || '';
   try {
@@ -373,9 +379,20 @@ function renderCharts(data) {
   });
 }
 
-// ── Filters reset ────────────────────────────────────────────────────
+// ── Filters ──────────────────────────────────────────────────────────
+function setAdminType(type) {
+  const slider = document.getElementById('admin-type-slider');
+  slider.dataset.active = type;
+  slider.querySelectorAll('.seg-opt').forEach(btn =>
+    btn.setAttribute('aria-selected', String(btn.dataset.value === type)));
+  loadAdminStats();
+}
+
 function resetAdminFilters() {
-  document.getElementById('admin-filter').value = 'all';
+  const slider = document.getElementById('admin-type-slider');
+  slider.dataset.active = 'phq9';
+  slider.querySelectorAll('.seg-opt').forEach(btn =>
+    btn.setAttribute('aria-selected', String(btn.dataset.value === 'phq9')));
   document.getElementById('admin-start').value = '';
   document.getElementById('admin-end').value   = '';
   loadAdminStats();
@@ -495,6 +512,7 @@ async function deleteUserById(id, email) {
 }
 
 window.resetAdminFilters = resetAdminFilters;
+window.setAdminType = setAdminType;
 window.debouncedLoadUsers = debouncedLoadUsers;
 window.loadUsers = loadUsers;
 window.submitAddUser = submitAddUser;
@@ -565,6 +583,7 @@ window.deleteUserById = deleteUserById;
 .filter-field label { font-size: .82rem; font-weight: 600; opacity: .8; }
 .filter-field .form-control-zs { width: 100%; padding: .4rem .7rem; font-size: .95rem; }
 .filter-field-check { min-width: auto; align-items: flex-start; }
+.filter-field-slider { min-width: 260px; }
 .filter-field-check input[type="checkbox"] { width: 20px; height: 20px; margin-top: .35rem; }
 .btn-sm { padding: .35rem .75rem; font-size: .85rem; }
 

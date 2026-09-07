@@ -37,7 +37,7 @@ d = r.json()
 report("New signup returns 201", r.status_code == 201, f"email={user_email}")
 report("Signup returns token", bool(d.get("token")))
 report("New user is_admin=False (no privilege escalation)", d.get("user", {}).get("is_admin") is False)
-report("Signup redirect_to='home'", d.get("user", {}).get("redirect_to") == "home")
+report("Signup redirect_to='dashboard'", d.get("user", {}).get("redirect_to") == "dashboard")
 user_token = d.get("token")
 
 r = requests.post(f"{BASE}/api/auth/signup", json={"email": user_email, "password": password}, timeout=10)
@@ -56,7 +56,7 @@ print("=" * 70)
 r = requests.post(f"{BASE}/api/auth/login", json={"email": user_email, "password": password}, timeout=10)
 d = r.json()
 report("Correct credentials return 200 + token", r.status_code == 200 and bool(d.get("token")))
-report("Regular user redirect_to='home'", d.get("user", {}).get("redirect_to") == "home")
+report("Regular user redirect_to='dashboard'", d.get("user", {}).get("redirect_to") == "dashboard")
 user_token = d.get("token") or user_token
 
 r = requests.post(f"{BASE}/api/auth/login", json={"email": user_email, "password": "WrongPass999"}, timeout=10)

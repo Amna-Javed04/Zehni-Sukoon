@@ -5,7 +5,7 @@ class Config:
     # Flask
     SECRET_KEY = os.environ.get('SECRET_KEY', 'change-me-in-production')
     
-    # Database — ApsaraDB / Postgres
+    # Database — PostgreSQL in production, SQLite for local dev
     # Set DATABASE_URL in .env for production
     SQLALCHEMY_DATABASE_URI = os.environ.get(
         'DATABASE_URL',
@@ -33,11 +33,6 @@ class Config:
     GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', os.environ.get('Gemini_API', ''))
     GEMINI_BASE_URL = os.environ.get('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta/openai/')
     GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash')
-
-    # DashScope / Qwen
-    DASHSCOPE_API_KEY = os.environ.get('DASHSCOPE_API_KEY', '')
-    DASHSCOPE_BASE_URL = os.environ.get('DASHSCOPE_BASE_URL', 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1')
-    QWEN_MODEL = os.environ.get('QWEN_MODEL', 'qwen-plus')
 
     # Password reset (stateless signed token)
     PASSWORD_RESET_EXPIRY_MINUTES = int(os.environ.get('PASSWORD_RESET_EXPIRY_MINUTES', 30))
