@@ -61,52 +61,77 @@
       </ul>
 
       <!-- Right-side controls -->
-      <div class="navbar-controls" role="group" aria-label="Accessibility and language controls">
+      <div class="navbar-controls" role="group" aria-label="Account, accessibility and language controls">
 
-        <!-- Language toggle: Ur ⇄ En -->
-        <button
-          id="lang-toggle-btn"
-          class="ctrl-btn lang-btn"
-          onclick="toggleLanguage()"
-          title="Toggle Language / زبان تبدیل کریں"
-          aria-label="Toggle language"
-        >
-          <span id="lang-btn-label" class="lang-btn-label">EN</span>
-        </button>
+        <!-- Account & settings dropdown: login, mode, text size, language -->
+        <div class="nav-menu-wrap" id="nav-menu-wrap">
+          <button
+            id="nav-menu-btn"
+            class="ctrl-btn nav-menu-btn"
+            onclick="toggleNavMenu(event)"
+            aria-haspopup="true"
+            aria-expanded="false"
+            aria-controls="nav-menu-panel"
+            title="Account & Settings / کھاتہ اور ترتیبات"
+            aria-label="Account and settings menu"
+          >
+            <i class="fas fa-user-gear" aria-hidden="true"></i>
+          </button>
 
-        <!-- Text-size toggle -->
-        <button
-          id="text-size-btn"
-          class="ctrl-btn"
-          onclick="cycleTextSize()"
-          title="Text Size / متن کا حجم"
-          aria-label="Change text size"
-        >
-          <span style="font-size:0.75rem;font-weight:700;">A</span><span style="font-size:1rem;font-weight:700;">A</span>
-        </button>
+          <div id="nav-menu-panel" class="nav-menu-panel d-none" role="menu" aria-label="Account and settings">
+            <!-- Auth — logged out (default; swapped by auth-client.js) -->
+            <div id="menu-auth-logged-out" class="nav-menu-auth">
+              <a href="{{ url_for('login') }}" class="nav-menu-link" role="menuitem">
+                <i class="fas fa-right-to-bracket" aria-hidden="true"></i>
+                <span data-ur="لاگ ان" data-en="Login">لاگ ان</span>
+              </a>
+              <a href="{{ url_for('register') }}" class="nav-menu-link" role="menuitem">
+                <i class="fas fa-user-plus" aria-hidden="true"></i>
+                <span data-ur="اندراج" data-en="Sign Up">اندراج</span>
+              </a>
+            </div>
+            <!-- Auth — logged in -->
+            <div id="menu-auth-logged-in" class="nav-menu-auth d-none">
+              <span class="nav-menu-user" id="nav-user-badge"></span>
+              <button type="button" class="nav-menu-link" onclick="handleLogout()" role="menuitem">
+                <i class="fas fa-right-from-bracket" aria-hidden="true"></i>
+                <span data-ur="باہر نکلیں" data-en="Logout">باہر نکلیں</span>
+              </button>
+            </div>
 
-        <!-- Night theme toggle -->
-        <button
-          id="theme-toggle-btn"
-          class="ctrl-btn"
-          onclick="toggleTheme()"
-          title="Night Mode / رات کا موڈ"
-          aria-label="Toggle night mode"
-        >
-          <i class="fas fa-moon" id="theme-icon"></i>
-        </button>
+            <div class="nav-menu-divider"></div>
 
-        <!-- Auth state — injected by JS from JWT -->
-        <div class="auth-controls" id="auth-controls">
-          <!-- Logged out state (default) -->
-          <div id="auth-logged-out" class="auth-state">
-            <a href="{{ url_for('login') }}" class="btn btn-zs-outline" id="nav-login-btn" data-ur="لاگ ان" data-en="Login">لاگ ان</a>
-            <a href="{{ url_for('register') }}" class="btn btn-zs-primary" id="nav-register-btn" data-ur="اندراج" data-en="Sign Up">اندراج</a>
-          </div>
-          <!-- Logged in state (shown by JS) -->
-          <div id="auth-logged-in" class="auth-state d-none">
-            <span class="user-badge" id="nav-user-badge"></span>
-            <button class="btn btn-zs-outline" onclick="handleLogout()" id="nav-logout-btn" data-ur="باہر نکلیں" data-en="Logout">باہر نکلیں</button>
+            <!-- Language -->
+            <div class="nav-menu-group" role="group" aria-label="Language / زبان">
+              <span class="nav-menu-group-label" data-ur="زبان" data-en="Language">زبان</span>
+              <div class="nav-menu-opts">
+                <button type="button" class="menu-opt" id="menu-lang-ur" onclick="setNavLanguage('ur')">اردو</button>
+                <button type="button" class="menu-opt" id="menu-lang-en" onclick="setNavLanguage('en')">EN</button>
+              </div>
+            </div>
+
+            <!-- Mode (light / night) -->
+            <div class="nav-menu-group" role="group" aria-label="Mode / موڈ">
+              <span class="nav-menu-group-label" data-ur="موڈ" data-en="Mode">موڈ</span>
+              <div class="nav-menu-opts">
+                <button type="button" class="menu-opt" id="menu-theme-light" onclick="setNavTheme('light')" aria-label="Light mode / روشن موڈ">
+                  <i class="fas fa-sun" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="menu-opt" id="menu-theme-dark" onclick="setNavTheme('dark')" aria-label="Night mode / رات کا موڈ">
+                  <i class="fas fa-moon" aria-hidden="true"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Text size -->
+            <div class="nav-menu-group" role="group" aria-label="Text size / متن کا حجم">
+              <span class="nav-menu-group-label" data-ur="متن کا حجم" data-en="Text size">متن کا حجم</span>
+              <div class="nav-menu-opts">
+                <button type="button" class="menu-opt" id="menu-size-0" onclick="setNavTextSize(0)" aria-label="Normal text">A</button>
+                <button type="button" class="menu-opt" id="menu-size-1" onclick="setNavTextSize(1)" style="font-size:1.05rem" aria-label="Large text">A</button>
+                <button type="button" class="menu-opt" id="menu-size-2" onclick="setNavTextSize(2)" style="font-size:1.2rem" aria-label="Larger text">A</button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -223,6 +248,7 @@
   <script src="{{ url_for('static', filename='js/auth-client.js') }}"></script>
   <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
   <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/nav-menu.js') }}"></script>
   <script src="{{ url_for('static', filename='js/companion-widget.js') }}"></script>
 
   {% block scripts %}{% endblock %}

@@ -37,8 +37,8 @@ function authUpdateHeader() {
   const user = authGetUser();
   const guestId = authGetGuestId();
 
-  const loggedOut = document.getElementById('auth-logged-out');
-  const loggedIn  = document.getElementById('auth-logged-in');
+  const loggedOut = document.getElementById('menu-auth-logged-out');
+  const loggedIn  = document.getElementById('menu-auth-logged-in');
   const badge     = document.getElementById('nav-user-badge');
   const adminItem = document.getElementById('admin-nav-item');
   const dashItem  = document.getElementById('dashboard-nav-item');
@@ -57,9 +57,11 @@ function authUpdateHeader() {
     if (adminItem) {
       user.is_admin ? adminItem.classList.remove('d-none') : adminItem.classList.add('d-none');
     }
-    // Show the personal dashboard tab for every logged-in account (admins included —
-    // they may still want to run their own check-ins and see their own trend).
-    if (dashItem) dashItem.classList.remove('d-none');
+    // The personal dashboard tab belongs to regular accounts; admins live on
+    // the admin dashboard only.
+    if (dashItem) {
+      user.is_admin ? dashItem.classList.add('d-none') : dashItem.classList.remove('d-none');
+    }
   } else if (guestId) {
     loggedOut?.classList.remove('d-none');
     loggedIn?.classList.add('d-none');
@@ -125,6 +127,11 @@ function requireUser() {
   if (!user || !token) {
     const next = encodeURIComponent(window.location.pathname + window.location.search);
     window.location.href = `/login?next=${next}`;
+    return false;
+  }
+  // Admins belong on the admin dashboard — never drop them on the personal one.
+  if (user.is_admin) {
+    window.location.href = '/admin';
     return false;
   }
   return true;
