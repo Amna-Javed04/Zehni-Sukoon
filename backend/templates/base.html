@@ -54,6 +54,10 @@
         <li class="dashboard-tab-item d-none" id="dashboard-nav-item">
           <a href="{{ url_for('user_dashboard') }}" class="tab-link {% if request.endpoint == 'user_dashboard' %}active{% endif %}" data-ur="ڈیش بورڈ" data-en="Dashboard">ڈیش بورڈ</a>
         </li>
+        <!-- Therapist tab: shown by auth-client.js only to therapist accounts -->
+        <li class="therapist-tab-item d-none" id="therapist-nav-item">
+          <a href="{{ url_for('therapist_dashboard') }}" class="tab-link {% if request.endpoint == 'therapist_dashboard' %}active{% endif %}" data-ur="معالج" data-en="Therapist">معالج</a>
+        </li>
         <!-- Admin tab: only rendered if current user is admin (checked client-side from localStorage token) -->
         <li class="admin-tab-item d-none" id="admin-nav-item">
           <a href="{{ url_for('admin_dashboard') }}" class="tab-link tab-link-admin {% if request.endpoint == 'admin_dashboard' %}active{% endif %}" data-ur="ایڈمن" data-en="Admin">ایڈمن</a>
@@ -177,10 +181,6 @@
             <i class="fas fa-phone-alt"></i>
             <span>Umang: 0311-7786264</span>
           </a>
-          <a href="tel:1122" class="footer-helpline-link">
-            <i class="fas fa-ambulance"></i>
-            <span>Rescue: 1122</span>
-          </a>
           <p class="footer-crisis-note" data-ur="اگر آپ بحران میں ہیں تو براہ کرم رابطہ کریں۔" data-en="If you are in crisis, please reach out.">اگر آپ بحران میں ہیں تو براہ کرم رابطہ کریں۔</p>
         </div>
       </div>
@@ -235,8 +235,8 @@
         </button>
       </form>
       <p class="companion-disclaimer"
-         data-ur="ہمدم ایک AI ساتھی ہے، طبی تشخیص نہیں۔ ہنگامی صورت میں Rescue 1122 یا Umang 0311-7786264 پر رابطہ کریں۔"
-         data-en="Humdum is an AI companion, not a medical substitute. For emergencies, call Rescue 1122 or Umang 0311-7786264.">ہمدم ایک AI ساتھی ہے، طبی تشخیص نہیں۔ ہنگامی صورت میں Rescue 1122 یا Umang 0311-7786264 پر رابطہ کریں۔</p>
+         data-ur="ہمدم ایک AI ساتھی ہے، طبی تشخیص نہیں۔ ہنگامی صورت میں Umang 0311-7786264 پر رابطہ کریں۔"
+         data-en="Humdum is an AI companion, not a medical substitute. For emergencies, call Umang at 0311-7786264.">ہمدم ایک AI ساتھی ہے، طبی تشخیص نہیں۔ ہنگامی صورت میں Umang 0311-7786264 پر رابطہ کریں۔</p>
     </section>
   </div>
 

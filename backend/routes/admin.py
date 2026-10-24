@@ -11,7 +11,7 @@ from flask import Blueprint, request, jsonify
 from werkzeug.security import check_password_hash  # noqa: F401 (kept for symmetry)
 from sqlalchemy import func, or_
 
-from ..models import db, Screening, User
+from ..models import db, Screening, User, TherapistPatientLink
 from ..middleware import require_admin
 
 from datetime import datetime, timedelta, timezone
@@ -242,3 +242,75 @@ def delete_user(user_id: int):
     db.session.delete(user)
     db.session.commit()
     return jsonify({'message': 'User and their records deleted.', 'id': user_id}), 200
+
+
+# ── Therapist verification ────────────────────────────────────────────
+@admin_bp.route('/therapists', methods=['GET'])
+@require_admin
+def list_therapists():
+    """
+    GET /api/admin/therapists?status=pending|verified|all
+    Therapist ACCOUNT METADATA only (name, email, license number) —
+    never any patient data, answers or scores.
+    """
+    status = (request.args.get('status') or 'all').lower()
+    q = db.session.query(User).filter(User.role == 'therapist')
+    if status == 'pending':
+        q = q.filter(User.is_verified.is_(False))
+    elif status == 'verified':
+        q = q.filter(User.is_verified.is_(True))
+
+    therapists = q.order_by(User.created_at.desc()).all()
+
+    def _row(t):
+        return {
+            'id': t.id,
+            'name': t.display_name,
+            'email': t.email,
+            'license_number': t.license_number,
+            'is_verified': bool(t.is_verified),
+            'created_at': t.created_at.isoformat() if t.created_at else None,
+        }
+
+    return jsonify({
+        'therapists': [_row(t) for t in therapists],
+        'pending_count': sum(1 for t in therapists if not t.is_verified),
+    }), 200
+
+
+@admin_bp.route('/therapists/<int:therapist_id>/verify', methods=['POST'])
+@require_admin
+def verify_therapist(therapist_id: int):
+    """
+    POST /api/admin/therapists/<id>/verify
+    Marks a pending therapist as verified — they can then see linked
+    patients and accept connections. Metadata only, no patient data.
+    """
+    user = User.query.get(therapist_id)
+    if not user or user.role != 'therapist':
+        return jsonify({'error': 'Therapist not found.'}), 404
+
+    user.is_verified = True
+    db.session.commit()
+    return jsonify({'message': 'Therapist verified.', 'id': user.id}), 200
+
+
+@admin_bp.route('/therapists/<int:therapist_id>', methods=['DELETE'])
+@require_admin
+def reject_therapist(therapist_id: int):
+    """
+    DELETE /api/admin/therapists/<id>
+    Rejects a therapist application by removing the (unverified) account.
+    Refuses if any patient links exist — those must be revoked first.
+    """
+    user = User.query.get(therapist_id)
+    if not user or user.role != 'therapist':
+        return jsonify({'error': 'Therapist not found.'}), 404
+
+    if TherapistPatientLink.query.filter_by(therapist_id=user.id).count() > 0:
+        return jsonify({'error': 'This therapist has patient links. Revoke them first.'}), 409
+
+    Screening.query.filter_by(user_id=user.id).delete(synchronize_session=False)
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify({'message': 'Therapist application rejected and account removed.', 'id': therapist_id}), 200

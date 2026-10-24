@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 import uuid
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import CheckConstraint
+from sqlalchemy import CheckConstraint, Index, text
 from werkzeug.security import generate_password_hash, check_password_hash
 
 db = SQLAlchemy()
@@ -10,7 +10,12 @@ db = SQLAlchemy()
 class User(db.Model):
     """
     Table: users
-    Columns: id, email, password_hash, is_admin, created_at
+    Columns: id, email, password_hash, is_admin, role, is_verified,
+             invite_code, license_number, display_name, created_at
+
+    role: 'patient' (default) | 'therapist' | 'admin'
+    is_admin is kept for backward compatibility: an is_admin user is
+    always treated as an admin regardless of `role`.
     """
     __tablename__ = 'users'
 
@@ -18,6 +23,13 @@ class User(db.Model):
     email = db.Column(db.String(255), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
+    role = db.Column(db.String(20), nullable=False, default='patient', server_default='patient')
+    # Therapist-only fields (NULL for patients)
+    is_verified = db.Column(db.Boolean, default=False, nullable=False, server_default=text('false'))
+    invite_code = db.Column(db.String(12), unique=True, nullable=True)
+    license_number = db.Column(db.String(100), nullable=True)
+    # Display name shown to a linked therapist / therapist shown to a linked patient.
+    display_name = db.Column(db.String(120), nullable=True)
     created_at = db.Column(
         db.DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc)
@@ -28,6 +40,49 @@ class User(db.Model):
 
     def check_password(self, password: str) -> bool:
         return check_password_hash(self.password_hash, password)
+
+    @property
+    def effective_role(self) -> str:
+        """Admin flag wins for backward compatibility."""
+        return 'admin' if self.is_admin else (self.role or 'patient')
+
+
+class TherapistPatientLink(db.Model):
+    """
+    Table: therapist_patient_links
+    A consent-based link between a therapist and a registered patient.
+    Access exists ONLY while status == 'active'; revoke sets
+    status='revoked' + revoked_at and access ends immediately.
+    Only one ACTIVE link may exist per (therapist_id, patient_id) pair —
+    enforced by a partial unique index below.
+    """
+    __tablename__ = 'therapist_patient_links'
+
+    id = db.Column(db.Integer, primary_key=True)
+    therapist_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    patient_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    status = db.Column(db.String(10), nullable=False, default='active')  # 'active' | 'revoked'
+    consented_at = db.Column(db.DateTime(timezone=True), nullable=False)
+    revoked_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    created_at = db.Column(
+        db.DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc)
+    )
+
+    __table_args__ = (
+        # At most one ACTIVE link per therapist-patient pair (revoked rows may accumulate).
+        Index(
+            'uq_therapist_patient_active',
+            'therapist_id', 'patient_id',
+            unique=True,
+            postgresql_where=text("status = 'active'"),
+            sqlite_where=text("status = 'active'"),
+        ),
+        CheckConstraint(
+            "status IN ('active', 'revoked')",
+            name='ck_link_status_valid'
+        ),
+    )
 
 
 class GuestSession(db.Model):
@@ -70,7 +125,6 @@ class Screening(db.Model):
     gender = db.Column(db.String(50), nullable=True)
     total_score = db.Column(db.Integer, nullable=True)
     severity = db.Column(db.String(50), nullable=True)
-    model_votes = db.Column(db.JSON, nullable=True)               # PHQ-9 only
     language = db.Column(db.String(2), nullable=False, default='ur')  # "en" | "ur"
     created_at = db.Column(
         db.DateTime(timezone=True),

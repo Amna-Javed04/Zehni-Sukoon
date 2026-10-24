@@ -29,4 +29,4 @@ EXPOSE 5000
 
 # Start Flask app using Gunicorn WSGI server in production mode.
 # ${PORT:-5000} lets the platform override the port; falls back to 5000 locally.
-CMD ["sh", "-c", "exec gunicorn --bind 0.0.0.0:${PORT:-5000} --workers 4 --timeout 120 run:app"]
+CMD ["sh", "-c", "exec gunicorn --bind 0.0.0.0:${PORT:-5000} --workers 2 --timeout 120 run:app"]

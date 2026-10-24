@@ -29,10 +29,23 @@ class Config:
     # Guest session expiry (hours)
     GUEST_SESSION_EXPIRY_HOURS = int(os.environ.get('GUEST_SESSION_EXPIRY_HOURS', 24))
 
-    # Google Gemini API
+    # LLM providers (OpenAI-compatible, multi-provider failover).
+    # Read directly from the environment by backend/llm_client.py; these
+    # config entries remain for backward compatibility with anything still
+    # reading them from Flask config.
     GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', os.environ.get('Gemini_API', ''))
     GEMINI_BASE_URL = os.environ.get('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta/openai/')
     GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash')
+
+    # Conversational screening budget: per-identity daily chat-turn caps.
+    # A crisis message bypasses the cap (helplines are never rate-limited).
+    CHAT_TURNS_PER_USER_DAY = int(os.environ.get('CHAT_TURNS_PER_USER_DAY', 80))
+    CHAT_TURNS_PER_GUEST_DAY = int(os.environ.get('CHAT_TURNS_PER_GUEST_DAY', 40))
+
+    # Token efficiency: only the N most recent transcript messages are sent
+    # verbatim; earlier turns are represented by the server's compact
+    # scored-items record. Server-side guards always see the full transcript.
+    LLM_RECENT_TURNS = int(os.environ.get('LLM_RECENT_TURNS', 6))
 
     # Password reset (stateless signed token)
     PASSWORD_RESET_EXPIRY_MINUTES = int(os.environ.get('PASSWORD_RESET_EXPIRY_MINUTES', 30))

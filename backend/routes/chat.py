@@ -1,8 +1,11 @@
 from flask import Blueprint, request, jsonify, current_app
-import requests
 import json
 import re
-import time
+import threading
+from datetime import date
+
+from .. import llm_client
+from .screening import get_current_user_or_guest
 
 chat_bp = Blueprint('chat', __name__, url_prefix='/api/chat')
 
@@ -89,19 +92,27 @@ GAD7_ITEMS = [
 
 SCREENING_SPECS = {'phq9': PHQ9_ITEMS, 'gad7': GAD7_ITEMS}
 
-# Verified Pakistani crisis lines - keep in sync with templates/crisis.html.
+# Verified Pakistani crisis line - keep in sync with templates/crisis.html.
+# Decision: Umang is the ONLY helpline listed. The others that used to ship here
+# (NYH 0800-69457, Rescue 1122) were removed because they are not verified by
+# this platform - an unverified number on a crisis card is a safety hazard.
 CRISIS_CONTACTS = [
     {'name': 'Umang', 'dial': '03117786264', 'display': '0311-7786264',
      'label_ur': 'مفت، خفیہ ذہنی صحت ہیلپ لائن', 'label_en': 'Free, confidential mental health helpline'},
-    {'name': 'NYH Helpdesk', 'dial': '080069457', 'display': '0800-69457',
-     'label_ur': 'مفت ذہنی صحت کی حمایت', 'label_en': 'Free mental health support line'},
-    {'name': 'Rescue', 'dial': '1122', 'display': '1122',
-     'label_ur': 'ہنگامی طبی صورت حال', 'label_en': 'Medical emergencies'},
 ]
 
 # A conversation is allowed to wander, but not forever. Past this many user
 # replies the client offers to finish the remaining items on the standard form.
 SCREENING_MAX_USER_TURNS = 20
+
+# Urdu-script characters (Arabic + Arabic Extended blocks). Honours the rule:
+# once the user writes in Urdu script, the conversation stays in Urdu -
+# even if the interface language is English.
+URDU_SCRIPT_RE = re.compile(r'[\u0600-\u06FF\u0750-\u077F]')
+
+
+def _contains_urdu_script(text: str) -> bool:
+    return bool(URDU_SCRIPT_RE.search(text or ''))
 # Server-side only prompt used for the very first turn, so the counsellor can
 # open the conversation before the user has typed anything.
 OPENING_SEED = (
@@ -172,19 +183,18 @@ def _item_lookup(assessment_type):
     return {item['key']: item for item in spec}
 
 
-def _call_llm(api_key, base_url, model, messages, json_mode=False, timeout=25):
-    """POST to the active OpenAI-compatible chat endpoint, return message content."""
-    payload = {'model': model, 'messages': messages}
-    if json_mode:
-        payload['response_format'] = {'type': 'json_object'}
-    response = requests.post(
-        f"{base_url.rstrip('/')}/chat/completions",
-        json=payload,
-        headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {api_key}'},
-        timeout=timeout,
-    )
-    response.raise_for_status()
-    return response.json()['choices'][0]['message']['content']
+def _call_llm(messages, json_mode=False, timeout=None):
+    """
+    THE single LLM seam for this module (existing tests patch this name).
+
+    Delegates to the multi-provider layer, which fails over immediately
+    between configured providers (429 -> next provider, timeout/5xx -> one
+    quick retry then next provider). Raises llm_client.LLMError when every
+    provider has failed; the callers below decide how to degrade.
+    """
+    result = llm_client.chat_completion(messages, json_mode=json_mode,
+                                        timeout=timeout)
+    return result['content']
 
 
 def _classify_llm_failure(exc):
@@ -357,9 +367,13 @@ def _build_screening_system_prompt(assessment_name, spec, remaining, pending_ite
         )
 
     lang_hint = (
-        "The interface language is Urdu, and this user very likely writes Urdu or Roman Urdu - "
-        "match their script exactly." if preferred_lang == 'ur'
-        else "The interface language is English - default to English unless the user switches."
+        "The interface language is Urdu. ALWAYS reply in Urdu script (Nastaliq), every single "
+        "turn - even if the user writes in English or Roman Urdu, answer in Urdu script using "
+        "simple, plain Urdu words. The conversation stays in Urdu."
+        if preferred_lang == 'ur'
+        else "The interface language is English - default to English, BUT if the user writes in "
+             "Urdu script, switch to Urdu script immediately and stay in Urdu script for the "
+             "rest of the conversation."
     )
 
     turns_left = max_turns - turns_used
@@ -371,11 +385,11 @@ def _build_screening_system_prompt(assessment_name, spec, remaining, pending_ite
 
         "HOW YOU TALK\n"
         f"- {lang_hint}\n"
-        "- MIRROR THE SCRIPT EXACTLY, EVERY TURN. Look at the script of the user's most recent "
-        "message and write your whole reply in that one script. If they wrote Roman Urdu "
-        "(\"main theek nahi hoon\"), your reply must be pure Roman Urdu - not a single Urdu-script "
-        "word in it. If they wrote Urdu script, reply in pure Urdu script. Never blend the two in "
-        "one message, and never drift back to Urdu script just because the interface is Urdu.\n"
+        "- SCRIPT RULES. If the interface language is Urdu, your ENTIRE reply is in Urdu script - "
+        "even when the user types in English or Roman Urdu, reply in Urdu script (kind, simple "
+        "words). If the interface language is English, mirror the script of the user's most recent "
+        "message: Roman Urdu in, Roman Urdu out; Urdu script in, Urdu script out - and once they "
+        "switch to Urdu script, stay in Urdu script. Never blend two scripts in one message.\n"
         "- Warm, plain, human. Never clinical, never robotic, never preachy.\n"
         "- Reflect what they just said in one short phrase, then move on with genuine curiosity.\n"
         "- Ask about ONE thing at a time. Never two questions in one message.\n"
@@ -445,6 +459,32 @@ def _build_screening_system_prompt(assessment_name, spec, remaining, pending_ite
         "each with a short verbatim quote in evidence. target_item must be one of the unresolved topics "
         "above."
     )
+
+
+# Score-extraction contract, shared by the /extract-score route and the offline
+# provider benchmark (scripts/llm_benchmark.py) so both score against the
+# exact same rules. The guards in chat.py remain the final authority.
+EXTRACT_SCORE_SYSTEM_PROMPT = (
+    "You are an empathetic, clinical AI score extractor for Zehni Sukoon, a mental health platform in Pakistan.\n"
+    "Your task is to analyze the user's free-text reply to a single screening question (from PHQ-9 or GAD-7) "
+    "and determine a score from 0 to 3 based on the frequency they describe:\n"
+    "- 0: Not at all / بالکل نہیں\n"
+    "- 1: Several days / kabhi kabhi / some days / کئی دن\n"
+    "- 2: More than half the days / half the time / aadhe se zyada din / آدھے سے زیادہ دن\n"
+    "- 3: Nearly every day / daily / har roz / تقریباً ہر روز\n\n"
+    "Rules:\n"
+    "1. If the reply is vague, unrelated, or lacks enough information to pick 0, 1, 2, or 3, set 'score' to null and 'needs_clarification' to true.\n"
+    "2. If they answer clearly, set 'score' to the correct integer and 'needs_clarification' to false.\n"
+    "3. CRITICAL Rule for PHQ-9 Question 9 (thoughts of self-harm/suicide):\n"
+    "   If there is ANY hint of self-harm, passive suicidal ideation, or ambiguity, DO NOT ask for clarification. "
+    "   Map it immediately to a score of 1, 2, or 3 (flagging risk). Ambiguity on Question 9 must default to flagging risk (score >= 1, needs_clarification = false).\n\n"
+    "Return ONLY a valid JSON object with the following format:\n"
+    "{\n"
+    "  \"score\": 0|1|2|3|null,\n"
+    "  \"reasoning\": \"brief explanation of why this score was chosen\",\n"
+    "  \"needs_clarification\": true|false\n"
+    "}"
+)
 
 
 def local_heuristic_extract_score(assessment_type, question, reply):
@@ -543,17 +583,85 @@ def local_heuristic_extract_score(assessment_type, question, reply):
     return None, "Unable to map response to 0-3 scale via local heuristics.", True
 
 
-def get_llm_config():
-    """Retrieve the Gemini LLM configuration, or (None, None, None) if unset."""
-    gemini_key = current_app.config.get('GEMINI_API_KEY')
-    if gemini_key:
-        return (
-            gemini_key,
-            current_app.config.get('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta/openai/'),
-            current_app.config.get('GEMINI_MODEL', 'gemini-2.5-flash')
-        )
+# ── Daily chat-turn budget ──────────────────────────────────────────
+# A conversation costs one provider call per turn; a per-identity daily cap
+# keeps one session (or one stolen guest id) from draining every provider.
+# In-process and per-day, like the rest of the chat design: no session table.
+# CRISIS BYPASS: a message that trips the local crisis floor is never blocked
+# by the cap - helplines must stay reachable at any hour, at any usage level.
+_DAILY_TURN_LOCK = threading.Lock()
+_DAILY_TURN_LEDGER = {}  # (kind, identity, iso-date) -> count
 
-    return None, None, None
+
+def _daily_turn_limits():
+    try:
+        per_user = int(current_app.config.get('CHAT_TURNS_PER_USER_DAY', 80))
+        per_guest = int(current_app.config.get('CHAT_TURNS_PER_GUEST_DAY', 40))
+    except (TypeError, ValueError):
+        per_user, per_guest = 80, 40
+    return max(per_user, 1), max(per_guest, 1)
+
+
+def _consume_chat_turn():
+    """
+    Count this chat turn against the caller's daily budget.
+
+    Returns (allowed, used, limit). Identity comes from the JWT or the guest
+    session header - the same helper the screening routes use, so a guest can
+    never spend a user's budget or vice versa.
+    """
+    user_id, guest_id = get_current_user_or_guest()
+    per_user, per_guest = _daily_turn_limits()
+    if user_id:
+        kind, key, limit = 'user', user_id, per_user
+    elif guest_id:
+        kind, key, limit = 'guest', guest_id, per_guest
+    else:
+        kind, key, limit = 'guest', 'anonymous', per_guest
+    ledger_key = (kind, key, date.today().isoformat())
+    with _DAILY_TURN_LOCK:
+        count = _DAILY_TURN_LEDGER.get(ledger_key, 0) + 1
+        _DAILY_TURN_LEDGER[ledger_key] = count
+        if len(_DAILY_TURN_LEDGER) > 5000:  # opportunistic cleanup of old days
+            today = date.today().isoformat()
+            for stale in [k for k in _DAILY_TURN_LEDGER if k[2] != today]:
+                del _DAILY_TURN_LEDGER[stale]
+    return count <= limit, count, limit
+
+
+def _recent_turns_config():
+    """How many of the latest transcript messages are sent to the model."""
+    try:
+        value = int(current_app.config.get('LLM_RECENT_TURNS', 6))
+        return max(value, 2)
+    except (TypeError, ValueError):
+        return 6
+
+
+def _scored_items_summary(coverage):
+    """
+    Compact record of what is already resolved, sent to the model as a system
+    message instead of the full early transcript.
+
+    This does NOT weaken any guard: every guard (evidence grounding, monotonic
+    merge, crisis floor, clarification budget, derived completion) runs
+    server-side on the FULL transcript the client still sends. The model only
+    needs to sound coherent and not re-ask resolved topics - the short quotes
+    below are the user's own words that earned each score.
+    """
+    if not coverage:
+        return ''
+    lines = [
+        'ALREADY RESOLVED (these topics are scored from the user\'s earlier '
+        'answers - do not ask about them again; only report them again in '
+        'coverage if the user adds something new about them):'
+    ]
+    for key in sorted(coverage):
+        item = coverage[key] or {}
+        evidence = str(item.get('evidence', '')).replace('"', "'")[:120]
+        lines.append(f'  - {key}: score {item.get("score")} '
+                     f'(their words: "{evidence}")')
+    return '\n'.join(lines)
 
 
 @chat_bp.route('/extract-score', methods=['POST'])
@@ -571,10 +679,8 @@ def extract_score():
     if not assessment_type or not question or not reply:
         return jsonify({'error': 'assessment_type, question, and reply are required.'}), 400
 
-    api_key, base_url, model = get_llm_config()
-
-    # If API key is missing, fall back directly to local heuristics
-    if not api_key:
+    # No provider configured at all -> fall back directly to local heuristics
+    if not llm_client.configured():
         score, reasoning, needs_clarify = local_heuristic_extract_score(assessment_type, question, reply)
         return jsonify({
             'score': score,
@@ -582,52 +688,19 @@ def extract_score():
             'needs_clarification': needs_clarify
         }), 200
 
-    # System instruction for score extraction
-    system_prompt = (
-        "You are an empathetic, clinical AI score extractor for Zehni Sukoon, a mental health platform in Pakistan.\n"
-        "Your task is to analyze the user's free-text reply to a single screening question (from PHQ-9 or GAD-7) "
-        "and determine a score from 0 to 3 based on the frequency they describe:\n"
-        "- 0: Not at all / بالکل نہیں\n"
-        "- 1: Several days / kabhi kabhi / some days / کئی دن\n"
-        "- 2: More than half the days / half the time / aadhe se zyada din / آدھے سے زیادہ دن\n"
-        "- 3: Nearly every day / daily / har roz / تقریباً ہر روز\n\n"
-        "Rules:\n"
-        "1. If the reply is vague, unrelated, or lacks enough information to pick 0, 1, 2, or 3, set 'score' to null and 'needs_clarification' to true.\n"
-        "2. If they answer clearly, set 'score' to the correct integer and 'needs_clarification' to false.\n"
-        "3. CRITICAL Rule for PHQ-9 Question 9 (thoughts of self-harm/suicide):\n"
-        "   If there is ANY hint of self-harm, passive suicidal ideation, or ambiguity, DO NOT ask for clarification. "
-        "   Map it immediately to a score of 1, 2, or 3 (flagging risk). Ambiguity on Question 9 must default to flagging risk (score >= 1, needs_clarification = false).\n\n"
-        "Return ONLY a valid JSON object with the following format:\n"
-        "{\n"
-        "  \"score\": 0|1|2|3|null,\n"
-        "  \"reasoning\": \"brief explanation of why this score was chosen\",\n"
-        "  \"needs_clarification\": true|false\n"
-        "}"
-    )
+    # System instruction for score extraction (module constant so the
+    # offline benchmark in scripts/llm_benchmark.py scores against the
+    # exact same contract the app uses).
+    system_prompt = EXTRACT_SCORE_SYSTEM_PROMPT
 
     user_content = f"Question: {question}\nUser Reply: {reply}"
 
     try:
-        url = f"{base_url.rstrip('/')}/chat/completions"
-        headers = {
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {api_key}'
-        }
-        payload = {
-            'model': model,
-            'messages': [
-                {'role': 'system', 'content': system_prompt},
-                {'role': 'user', 'content': user_content}
-            ],
-            'response_format': {'type': 'json_object'}
-        }
-        
-        response = requests.post(url, json=payload, headers=headers, timeout=10)
-        response.raise_for_status()
-        
-        res_data = response.json()
-        content = res_data['choices'][0]['message']['content']
-        
+        content = _call_llm([
+            {'role': 'system', 'content': system_prompt},
+            {'role': 'user', 'content': user_content},
+        ], json_mode=True, timeout=10)
+
         # Parse JSON from response
         parsed = json.loads(content)
         return jsonify({
@@ -682,9 +755,36 @@ def screening_turn():
     turns_used = sum(1 for m in transcript if m['role'] == 'user')
     last_user_message = next((m['content'] for m in reversed(transcript)
                               if m['role'] == 'user'), '')
+    # Urdu stays Urdu: a user writing in Urdu script keeps the conversation in
+    # Urdu, even when the interface (and their very first click) was English.
+    if language == 'en' and _contains_urdu_script(last_user_message):
+        language = 'ur'
+        is_ur = True
     # Independent of the provider: a cry for help must surface even if the LLM
     # is rate-limited, blocked, or entirely down.
     local_crisis = _local_crisis_signal(last_user_message)
+
+    # Daily chat-turn budget. A crisis message is never blocked by it.
+    turns_allowed, turns_used_today, turns_limit = _consume_chat_turn()
+    if not turns_allowed and not local_crisis:
+        return jsonify({
+            'ok': False,
+            'reason': 'daily_limit',
+            'transient': False,
+            'crisis': False,
+            'over_limit': True,
+            'turns_used': turns_used,
+            'max_turns': SCREENING_MAX_USER_TURNS,
+            'crisis_contacts': CRISIS_CONTACTS,
+            'reply': (
+                'آج کی بات چیت کی حد پوری ہو چکی ہے۔ آپ یہ جانچ مختصر فارم سے آسانی سے مکمل کر سکتے ہیں، اور کل دوبارہ آئیے گا — لیکن اگر آپ ابھی تنگ میں ہیں تو نیچے کے نمبر پر رابطہ ضرور کریں۔'
+                if is_ur else
+                "You've reached today's chat limit. You can finish this check "
+                "comfortably with the short written form, and the chat opens "
+                "again tomorrow - but if you are struggling right now, please "
+                "call the helpline below."
+            ),
+        }), 200
 
     prior_coverage = data.get('prior_coverage')
     coverage = _validated_coverage(
@@ -710,8 +810,7 @@ def screening_turn():
         'turns_used': turns_used,
         'max_turns': SCREENING_MAX_USER_TURNS,
     }
-    api_key, base_url, model = get_llm_config()
-    if not api_key:
+    if not llm_client.configured():
         # Decision: never fake a conversation with scripted keyword replies.
         # Say what happened and hand over to the standard form.
         return jsonify(dict(unavailable, **{
@@ -734,9 +833,20 @@ def screening_turn():
         'PHQ-9' if assessment_type == 'phq9' else 'GAD-7', spec, unanswered_now,
         pending_item, turns_used, SCREENING_MAX_USER_TURNS, language
     )
-    messages = [{'role': 'system', 'content': system_prompt}]
-    messages.extend({'role': m['role'], 'content': m['content']} for m in transcript)
-    if not transcript:
+    # Token efficiency (does NOT weaken any guard - see _scored_items_summary):
+    # resolved topics travel as a compact scored-items record, and only the
+    # most recent transcript messages are sent verbatim. Every deterministic
+    # guard still runs server-side on the full transcript the client replays.
+    # The summary joins the SAME system message instead of being sent as a
+    # second one: Gemini's OpenAI-compatible endpoint answers a request with
+    # two system messages with an off-schema blob (no reply/coverage), which
+    # lands in the empty-reply fallback and stalls the conversation.
+    scored_summary = _scored_items_summary(coverage)
+    messages = [{'role': 'system', 'content':
+                 system_prompt + (f'\n\n{scored_summary}' if scored_summary else '')}]
+    recent = transcript[-_recent_turns_config():]
+    messages.extend({'role': m['role'], 'content': m['content']} for m in recent)
+    if not recent:
         # The opening turn has no user message yet, and the OpenAI-compatible
         # providers reject a contentless request (Gemini answers 400 "contents is
         # not specified"). This seed never reaches the browser - it only prompts
@@ -745,29 +855,20 @@ def screening_turn():
 
     parsed = None
     failure_reason = 'llm_error'
-    # One quiet retry: this prompt is long and the provider rate-limits hard, so
-    # failing the whole conversation on the first blip would be unkind. If both
-    # attempts fail we still degrade honestly to the written form.
-    for attempt in (1, 2):
-        try:
-            content = _call_llm(api_key, base_url, model, messages,
-                                json_mode=True, timeout=30 if attempt == 1 else 45)
-            candidate = _extract_json_object(content)
-            if not isinstance(candidate, dict):
-                raise ValueError('model returned a non-object')
-            parsed = candidate
-            break
-        except Exception as exc:
-            kind, delay = _classify_llm_failure(exc)
-            body = getattr(getattr(exc, 'response', None), 'text', '') or ''
-            print(f"[Chat BP] screening-turn attempt {attempt} failed ({kind}): {exc} {body[:200]}")
-            failure_reason = {'config': 'llm_unavailable',
-                              'exhausted': 'llm_quota_exhausted'}.get(kind, 'llm_error')
-            if kind == 'transient' and attempt == 1:
-                # Honour the provider's own hint, but never stall a worker for long.
-                time.sleep(min(max(delay or 3.0, 1.0), 10.0))
-            else:
-                break
+    try:
+        content = _call_llm(messages, json_mode=True)
+        candidate = _extract_json_object(content)
+        if not isinstance(candidate, dict):
+            raise ValueError('model returned a non-object')
+        parsed = candidate
+    except Exception as exc:  # every provider failed - degrade honestly below
+        kind, _delay = _classify_llm_failure(exc)
+        attempts = getattr(exc, 'attempts', None) or []
+        trail = ' > '.join(f"{a['provider']}({a['kind']}{'' if a.get('status') is None else '/' + str(a['status'])})"
+                           for a in attempts)
+        print(f"[Chat BP] screening-turn failed ({kind}) after providers: {trail or '?'}")
+        failure_reason = {'config': 'llm_unavailable',
+                          'exhausted': 'llm_quota_exhausted'}.get(kind, 'llm_error')
 
     if parsed is None:
         if local_crisis:
@@ -786,6 +887,7 @@ def screening_turn():
                 'ok': True,
                 'degraded': True,
                 'reply': _crisis_fallback(language, last_user_message),
+                'language': language,
                 'coverage': rescue,
                 'unanswered': rescue_unanswered,
                 'target_item': rescue_unanswered[0] if rescue_unanswered else None,
@@ -878,6 +980,7 @@ def screening_turn():
     return jsonify({
         'ok': True,
         'reply': reply,
+        'language': language,   # echoed so the client keeps replying in the same language
         'coverage': merged,
         'unanswered': unanswered,
         'target_item': target_key,
@@ -901,22 +1004,28 @@ def companion():
     data = request.get_json(silent=True) or {}
     message = data.get('message')
     history = data.get('history', [])
+    companion_lang = data.get('language') if data.get('language') in ('ur', 'en') else None
 
     if not message:
         return jsonify({'error': 'message is required.'}), 400
 
-    api_key, base_url, model = get_llm_config()
-
-    if not api_key:
+    if not llm_client.configured():
         return jsonify({
             'response': "I am here with you. Please feel free to tell me more about how you are feeling."
         }), 200
 
     # Companion system prompt
+    companion_lang_rule = (
+        "The interface language is Urdu: ALWAYS respond in Urdu script, even if the user writes "
+        "in English or Roman Urdu. Use simple, plain Urdu words."
+        if companion_lang == 'ur'
+        else "Respond in the same language the user writes in (Urdu script, Roman Urdu or "
+             "English). If they write in Urdu script, stay in Urdu script."
+    )
     system_prompt = (
         "You are Humdum (ہمدم), an empathetic, caring, non-clinical AI companion for Zehni Sukoon in Pakistan.\n"
         "Your tone must stay calm, supportive, non-clinical, and extremely safe.\n"
-        "Use simple language. Respond in the same language the user writes in (Urdu or English/Roman Urdu).\n"
+        f"Use simple language. {companion_lang_rule}\n"
         "Always remind them gently if they are in crisis that they can call the helpline. Never make diagnostic claims."
     )
 
@@ -931,21 +1040,8 @@ def companion():
         messages.append({'role': 'user', 'content': message})
 
     try:
-        url = f"{base_url.rstrip('/')}/chat/completions"
-        headers = {
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {api_key}'
-        }
-        payload = {
-            'model': model,
-            'messages': messages
-        }
-        response = requests.post(url, json=payload, headers=headers, timeout=10)
-        response.raise_for_status()
-        
-        res_data = response.json()
-        bot_response = res_data['choices'][0]['message']['content']
-        return jsonify({'response': bot_response}), 200
+        result = llm_client.chat_completion(messages, timeout=10)
+        return jsonify({'response': result['content']}), 200
 
     except Exception as e:
         return jsonify({

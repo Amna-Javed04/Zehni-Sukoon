@@ -50,9 +50,9 @@
 
 ## How the Screening Works
 
-**Scoring engine.** PHQ-9 severity is decided by a majority vote of three machine-learning models — Random Forest, XGBoost, and a scaled SVM (11 features) — with per-model confidences recorded. GAD-7 uses the standard clinical score bands (0–4 minimal, 5–9 mild, 10–14 moderate, 15–21 severe). Crisis detection = PHQ-9 item 9 > 0.
+**Scoring engine.** Severity comes ONLY from the standard validated clinical score bands. PHQ-9: 0–4 minimal, 5–9 mild, 10–14 moderate, 15–19 moderately severe, 20–27 severe. GAD-7: 0–4 minimal, 5–9 mild, 10–14 moderate, 15–21 severe. Crisis detection = PHQ-9 item 9 > 0. (A machine-learning ensemble was tried here earlier and has been fully removed; see [ml_research/](ml_research/).)
 
-**Conversational mode** uses an LLM (Google Gemini) with a strict, stateless contract: the browser owns the transcript and echoes coverage state every turn, so a refresh never loses progress. The server never trusts the model blindly — deterministic guards enforce:
+**Conversational mode** uses an LLM behind a **multi-provider failover layer** ([backend/llm_client.py](backend/llm_client.py)): Qwen, Groq and Gemini (any OpenAI-compatible endpoint) are tried in the configured order, with reasoning disabled and a ~18s timeout per call — a 429 fails over to the next provider immediately. The conversation itself follows a strict, stateless contract: the browser owns the transcript and echoes coverage state every turn, so a refresh never loses progress. The server never trusts the model blindly — deterministic guards enforce:
 
 - **User-grounded evidence** — a score is only accepted if it is traceable to the *user's own words* (never to the bot's own question).
 - **Monotonic coverage** — items once scored cannot be silently unscored; values are validated to integers 0–3.
@@ -67,8 +67,8 @@
 | Backend | Python 3.11+, Flask 3.1, Flask-SQLAlchemy, Flask-CORS |
 | Auth | PyJWT (login + password-reset tokens), Werkzeug password hashing |
 | Database | SQLite (local dev) / PostgreSQL 15 (production, via psycopg2) |
-| ML | scikit-learn 1.6, XGBoost 2.1, pandas, NumPy, joblib (pre-trained ensemble at repo root) |
-| LLM | Google Gemini, via its OpenAI-compatible HTTP endpoint using `requests` — no vendor SDK |
+| ML | *(removed)* — severity uses the validated PHQ-9/GAD-7 score bands; retired model artifacts live in `ml_research/` |
+| LLM | Multi-provider failover layer (Qwen / Groq / Gemini) over their OpenAI-compatible HTTP endpoints using `requests` — no vendor SDK. Env-configured; providers without a key are skipped. Per-user/per-guest daily chat-turn caps. |
 | Frontend | Jinja2 templates, vanilla JS, custom CSS, full RTL/LTR i18n |
 | Server | Gunicorn 23 (production), Flask dev server (local) |
 
@@ -91,7 +91,7 @@ ZehniSukoon/
 │   │
 │   ├── routes/
 │   │   ├── auth.py           # Signup, login, guest sessions, password reset
-│   │   ├── screening.py      # Standard form: start + result (ML ensemble scoring)
+│   │   ├── screening.py      # Standard form: start + result (validated score bands)
 │   │   ├── chat.py           # Conversational screening turn engine + Humdum companion
 │   │   ├── user.py           # User dashboard data (overview, history)
 │   │   └── admin.py          # Admin stats + user management
@@ -99,8 +99,8 @@ ZehniSukoon/
 │   ├── templates/            # Jinja2 pages (bilingual, RTL-aware)
 │   └── static/               # CSS + JS (api client, auth, i18n, theme, chat widget)
 │
-├── model.pkl / RF_model.pkl / xgb_model.pkl / svm_model.pkl / svm_scaler.pkl / label_encoder.pkl
-│                             # Pre-trained PHQ-9 ensemble artifacts
+├── ml_research/              # Retired ML artifacts (NOT used by the app)
+│                             # RF/xgb/svm pickles + label encoder (research only)
 │
 └── test_*.py                 # Test suites (see Testing)
 ```
@@ -122,7 +122,8 @@ pip install -r requirements.txt
 
 # 3. Configure environment
 cp .env.example .env           # then edit .env — see table below
-# Minimum for local dev: set SECRET_KEY, JWT_SECRET_KEY, and GEMINI_API_KEY
+# Minimum for local dev: set SECRET_KEY, JWT_SECRET_KEY, and at least one
+# LLM provider keys — GROQ_API_KEY (primary) and/or GEMINI_API_KEY (legacy)
 # (DATABASE_URL already defaults to local SQLite)
 
 # 4. Run
@@ -141,8 +142,15 @@ All configuration comes from environment variables (loaded from `.env`). **Never
 | `SECRET_KEY` | **Yes** (prod) | Flask session signing |
 | `JWT_SECRET_KEY` | **Yes** (prod) | Signs login + password-reset tokens |
 | `DATABASE_URL` | **Yes** (prod) | `sqlite:///zehni_test.db` locally; `postgresql://…` in production |
-| `GEMINI_API_KEY` | Yes (AI features) | Google Gemini API key |
-| `GEMINI_MODEL` | No | e.g. `gemini-2.5-flash` |
+| `LLM_PROVIDERS` | No | Failover order, e.g. `qwen,groq,gemini` (default order; keyless providers are skipped) |
+| `QWEN_API_KEY` / `QWEN_BASE_URL` / `QWEN_MODEL` | No | Qwen (DashScope compatible-mode); defaults `qwen3.8-flash` |
+| `GROQ_API_KEY` / `GROQ_BASE_URL` / `GROQ_MODEL` | No | Groq; `.env.example` uses `qwen/qwen3.8-27b` (the `openai/gpt-oss-120b` fallback needs its thinking capped — see `GROQ_REASONING_EFFORT`) |
+| `GROQ_REASONING_EFFORT` | No | Groq thinking budget: `low` (default), `medium`, `high`; any other value omits the field |
+| `GEMINI_API_KEY` | Yes (AI features) | Google Gemini API key — works alone as the legacy single provider |
+| `GEMINI_MODEL` | No | Set to a model currently listed as available in Google AI Studio (IDs rotate) |
+| `LLM_TIMEOUT_SECONDS` / `LLM_MAX_TOKENS` | No | Defaults 18s / 700 tokens per call |
+| `LLM_RECENT_TURNS` | No | Recent transcript messages sent verbatim (default 6); earlier turns travel as the server's compact scored-items record |
+| `CHAT_TURNS_PER_USER_DAY` / `CHAT_TURNS_PER_GUEST_DAY` | No | Daily chat-turn caps (defaults 80 / 40). A crisis message always bypasses the cap |
 | `CORS_ORIGINS` | No | Comma-separated allowed origins |
 | `GUEST_SESSION_EXPIRY_HOURS` | No | Default 24 |
 | `JWT_ACCESS_EXPIRES_HOURS` | No | Default 24 |
@@ -173,7 +181,7 @@ All API routes are JSON. Authenticated routes expect `Authorization: Bearer <tok
 | `POST /api/auth/forgot-password` | — | Request reset link (anti-enumeration: identical response either way) |
 | `POST /api/auth/reset-password` | — | Reset password with token |
 | `POST /api/screening/start` | User/Guest | Start a standard-form screening |
-| `POST /api/screening/result` | User/Guest | Submit answers → ensemble score, severity, crisis flag |
+| `POST /api/screening/result` | User/Guest | Submit answers → band-based score, severity, crisis flag |
 | `POST /api/chat/screening-turn` | User/Guest | One conversational screening turn (transcript in → reply + coverage out) |
 | `POST /api/chat/extract-score` | User/Guest | Extract instrument scores from a conversation |
 | `POST /api/chat/companion` | — | Humdum companion chat (no account needed) |
@@ -189,13 +197,17 @@ All API routes are JSON. Authenticated routes expect `Authorization: Bearer <tok
 
 ```bash
 # Offline suites (no server, no LLM quota needed)
-python test_screening_guards.py    # 65 assertions: conversational-screening safety guards
+python test_screening_guards.py    # conversational-screening safety guards
+python test_llm_providers.py       # multi-provider failover, caps, crisis floor (mocked HTTP)
 python test_score_extraction.py    # 40 cases: score extraction incl. clarification flow
-python test_models.py              # ML ensemble sanity (3-model agreement)
+python test_severity_bands.py      # PHQ-9/GAD-7 band mapping, crisis rule, no-ML response
 
 # Live suites (dev server must be running: python run.py)
-python test_auth_admin.py          # 31 checks: auth, role-based redirects, admin access control
-python test_ai_integration.py      # 18 checks: end-to-end scoring, crisis redirect, ensemble votes
+python test_auth_admin.py          # auth, role-based redirects, admin access control
+python test_ai_integration.py      # end-to-end scoring, crisis redirect, band severity
+
+# Provider benchmark (needs real API keys in .env; spends a little quota)
+python scripts/llm_benchmark.py    # accuracy + avg latency per configured provider
 ```
 
 ## Security & Privacy

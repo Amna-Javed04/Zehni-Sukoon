@@ -27,5 +27,6 @@ instance/
 .qoder/
 .vscode/
 
-# Note: model *.pkl files are intentionally NOT ignored — the app loads them
-# from the project root at runtime.
+# Research-only ML artifacts — the app no longer loads any model files
+ml_research/
+*.pkl

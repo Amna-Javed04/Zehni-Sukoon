@@ -2,7 +2,7 @@
 Auth middleware — JWT token verification and route guards.
 
 Usage (import in route files):
-    from ..middleware import require_auth, require_admin
+    from ..middleware import require_auth, require_admin, require_therapist
 """
 
 from functools import wraps
@@ -74,5 +74,41 @@ def require_admin(f):
 
         g.user_id = user.id
         g.is_admin = True
+        return f(*args, **kwargs)
+    return decorated
+
+
+def require_therapist(f):
+    """
+    Require a valid JWT AND role == 'therapist' AND is_verified = True.
+    Same server-side style as require_admin: the DB is checked on every
+    request, so a revoked/unverified therapist loses access immediately —
+    no reliance on hidden UI. Sets g.user_id and g.is_admin (False).
+    """
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth_header = request.headers.get('Authorization', '')
+        if not auth_header.startswith('Bearer '):
+            return jsonify({'error': 'Missing or invalid Authorization header'}), 401
+        token = auth_header.split(' ', 1)[1]
+        try:
+            payload = _decode_token(token)
+        except jwt.ExpiredSignatureError:
+            return jsonify({'error': 'Token has expired'}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({'error': 'Invalid token'}), 401
+
+        user = User.query.get(int(payload['sub']))
+        if not user:
+            return jsonify({'error': 'User not found'}), 401
+
+        # Hard server-side therapist checks (admins/patients are not therapists)
+        if user.is_admin or user.role != 'therapist':
+            return jsonify({'error': 'Therapist access required'}), 403
+        if not user.is_verified:
+            return jsonify({'error': 'Therapist account not verified yet'}), 403
+
+        g.user_id = user.id
+        g.is_admin = False
         return f(*args, **kwargs)
     return decorated

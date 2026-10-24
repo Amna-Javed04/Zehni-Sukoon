@@ -2,7 +2,7 @@
 Integration test: verifies that
 1. The companion chatbot responds via the real LLM API (not fallback text)
 2. /extract-score uses the LLM (not local heuristics)
-3. PHQ-9 results come from the ML ensemble with majority voting honored
+3. PHQ-9 results come from the standard validated score bands (no ML)
 Run with the Flask dev server up on localhost:5000.
 """
 import requests
@@ -86,7 +86,7 @@ for question, reply, expected in extract_cases:
 
 print()
 print("=" * 70)
-print("4. PHQ-9 RESULT — must come from ML ensemble majority vote")
+print("4. PHQ-9 RESULT — must come from the validated clinical bands")
 print("=" * 70)
 # Create guest session for screening auth
 g = requests.post(f"{BASE}/api/auth/guest", json={}, timeout=10)
@@ -108,20 +108,24 @@ for label, answers in phq_cases:
         "language": "en"
     }, headers=headers, timeout=30)
     d = r.json()
-    votes = d.get("model_votes")
     sev = d.get("severity")
-    print(f"\n  {label}: total={d.get('total_score')} severity={sev}")
-    if votes:
-        preds = [votes["random_forest"]["prediction"], votes["svm"]["prediction"], votes["xgboost"]["prediction"]]
-        print(f"    RF={preds[0]} ({votes['random_forest']['confidence']}%) | "
-              f"SVM={preds[1]} ({votes['svm']['confidence']}%) | "
-              f"XGB={preds[2]} ({votes['xgboost']['confidence']}%) | agreement={votes['ensemble_agreement']}")
-        majority = max(set(preds), key=preds.count)
-        report("model_votes present (ensemble WAS used, not threshold fallback)", True)
-        report(f"Severity follows majority vote (majority='{majority}', severity='{sev}')", sev == majority)
+    total = d.get("total_score")
+    print(f"\n  {label}: total={total} severity={sev}")
+    # Standard validated PHQ-9 bands: 0-4 minimal, 5-9 mild, 10-14 moderate,
+    # 15-19 moderately severe, 20-27 severe.
+    if total is None or total >= 20:
+        expected = "Severe"
+    elif total >= 15:
+        expected = "Moderately Severe"
+    elif total >= 10:
+        expected = "Moderate"
+    elif total >= 5:
+        expected = "Mild"
     else:
-        report("model_votes present (ensemble WAS used, not threshold fallback)", False,
-               "model_votes is null — threshold fallback was used instead of ML models!")
+        expected = "Minimal"
+    report(f"Severity follows validated bands (expected='{expected}', severity='{sev}')", sev == expected)
+    report("No per-model/ML fields in response", "model_votes" not in d,
+           f"model_votes={d.get('model_votes')}")
 
 # Crisis path: q9 > 0 must flag crisis_redirect AND still return full ML results
 r = requests.post(f"{BASE}/api/screening/result", json={
@@ -132,9 +136,9 @@ r = requests.post(f"{BASE}/api/screening/result", json={
 d = r.json()
 report("Crisis redirect when q9>0", d.get("crisis_redirect") is True,
        f"severity={d.get('severity')}, crisis_redirect={d.get('crisis_redirect')}")
-report("Crisis case still returns ensemble model_votes (score/severity/confidence shown)",
-       d.get("model_votes") is not None and bool(d.get("severity")),
-       f"model_votes={'present' if d.get('model_votes') else 'NULL'}")
+report("Crisis case still returns score + severity (no short-circuit, no ML fields)",
+       "model_votes" not in d and bool(d.get("severity")) and d.get("total_score") is not None,
+       f"severity={d.get('severity')}, total={d.get('total_score')}, model_votes={'present' if 'model_votes' in d else 'absent'}")
 
 print()
 print("=" * 70)

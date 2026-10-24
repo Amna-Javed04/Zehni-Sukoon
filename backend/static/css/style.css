@@ -16,7 +16,9 @@
   --bg:         var(--brand-cream);
   --bg-card:    var(--brand-cream-dark);
   --text-main:  var(--brand-charcoal);
-  --text-muted: var(--brand-green-light);
+  /* Darkened from --brand-green-light (#839791) for WCAG-readable small
+     explanation text; the brand palette itself is unchanged. */
+  --text-muted: #5c6f69;
   --accent:     var(--brand-lavender);
   --accent-light: var(--brand-lavender-light);
 
@@ -657,25 +659,6 @@ html[dir="rtl"] .form-control-zs { text-align: right; direction: rtl; }
 .badge-moderate  { background: #ffe0b2; color: #6d3a00; }
 .badge-moderately-severe { background: #ffccbc; color: #6d2800; }
 .badge-severe    { background: var(--brand-lavender-light); color: var(--brand-lavender); }
-
-.model-vote-row {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0.6rem 1rem;
-  border-radius: var(--radius-xs);
-  background: rgba(131,151,145,0.1);
-  margin-bottom: 0.5rem;
-  font-size: 0.9rem;
-}
-.model-vote-row .model-conf {
-  color: var(--text-muted);
-  font-weight: 600;
-  font-size: 0.82rem;
-  margin-inline-start: 0.35rem;
-}
-.model-agreement-row {
-  background: rgba(101,88,122,0.08);
-  font-weight: 700;
-}
 
 /* Crisis support banner (shown alongside screening results) */
 .crisis-banner {

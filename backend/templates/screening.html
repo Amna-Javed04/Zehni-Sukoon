@@ -104,7 +104,7 @@
         <h3 data-ur="بطور مہمان جاری رکھیں" data-en="Continue as Guest">بطور مہمان جاری رکھیں</h3>
         <p class="text-muted" style="font-size:0.9rem;" data-ur="بغیر سائن اِن کے، مکمل گمنام۔ نتائج اسی ڈیوائس تک محدود رہیں گے۔" data-en="No sign-in needed. Fully anonymous; results stay on this device.">بغیر سائن اِن کے، مکمل گمنام۔ نتائج اسی ڈیوائس تک محدود رہیں گے۔</p>
       </div>
-      <div class="glass-card pathway-card" onclick="window.location.href='/login?next=/screening'">
+      <div class="glass-card pathway-card" onclick="goToLogin()">
         <div class="pathway-icon"><i class="fas fa-right-to-bracket"></i></div>
         <h3 data-ur="سائن اِن / اکاؤنٹ بنائیں" data-en="Sign in / Create account">سائن اِن / اکاؤنٹ بنائیں</h3>
         <p class="text-muted" style="font-size:0.9rem;" data-ur="اکاؤنٹ کے ساتھ نتائج محفوظ رکھیں اور بعد میں دیکھیں۔" data-en="Sign in or register so your results are tied to your account.">اکاؤنٹ کے ساتھ نتائج محفوظ رکھیں اور بعد میں دیکھیں۔</p>
@@ -114,7 +114,7 @@
     <!-- Shown when already signed in -->
     <div id="identity-signed-in-prompt" class="text-center d-none">
       <p class="mb-3"><span data-ur="آپ سائن اِن ہیں:" data-en="You are signed in as:">آپ سائن اِن ہیں:</span> <strong id="identity-user-email"></strong></p>
-      <button class="btn btn-zs-primary" onclick="goToStage('details')" data-ur="اس اکاؤنٹ کے ساتھ جاری رکھیں" data-en="Continue with this account">اس اکاؤنٹ کے ساتھ جاری رکھیں</button>
+      <button class="btn btn-zs-primary" onclick="confirmAccountContinue()" data-ur="اس اکاؤنٹ کے ساتھ جاری رکھیں" data-en="Continue with this account">اس اکاؤنٹ کے ساتھ جاری رکھیں</button>
       <p class="text-muted mt-3" style="font-size:0.85rem;">
         <span data-ur="یا" data-en="Or">یا</span>
         <a href="#" onclick="chooseGuestMode(); return false;" data-ur="بطور مہمان جاری رکھیں" data-en="continue as a guest instead">بطور مہمان جاری رکھیں</a>
@@ -131,7 +131,7 @@
        ═══════════════════════════════════════════════════════ -->
   <div id="stage-details" class="glass-card p-5 fade-in-up d-none">
     <h2 class="mb-3 text-center" data-ur="کچھ بنیادی معلومات" data-en="A Few Details First">کچھ بنیادی معلومات</h2>
-    <p class="text-center text-muted mb-4" data-ur="یہ معلومات ماڈل کی درستگی کو بہتر بنانے میں مدد دیتی ہیں۔" data-en="These optional fields help improve screening insights.">یہ معلومات ماڈل کی درستگی کو بہتر بنانے میں مدد دیتی ہیں۔</p>
+    <p class="text-center text-muted mb-4" data-ur="یہ معلومات آپ کی رپورٹ اور ڈیش بورڈ کے لیے محفوظ کی جاتی ہیں۔" data-en="These details are stored for your reports and dashboard.">یہ معلومات آپ کی رپورٹ اور ڈیش بورڈ کے لیے محفوظ کی جاتی ہیں۔</p>
 
     <div class="mb-4">
       <label class="form-label-zs" data-ur="عمر کا گروپ" data-en="Age Group">عمر کا گروپ</label>
@@ -154,7 +154,7 @@
     </div>
 
     <div class="d-flex gap-3 justify-content-end">
-      <button class="btn btn-zs-outline" onclick="goToStage('identity')" data-ur="واپس" data-en="Back">واپس</button>
+      <button class="btn btn-zs-outline" onclick="backFromDetails()" data-ur="واپس" data-en="Back">واپس</button>
       <button class="btn btn-zs-primary" onclick="startQuestions()" data-ur="شروع کریں" data-en="Start screening">شروع کریں</button>
     </div>
   </div>
@@ -166,6 +166,7 @@
     <div class="progress-bar-wrap">
       <div id="screening-progress" class="progress-bar-fill" style="width: 0%;"></div>
     </div>
+    <p id="screening-progress-note" class="chat-coverage-note mb-3"></p>
 
     <div id="question-container">
       <!-- Active Question will be dynamically injected here -->
@@ -243,27 +244,6 @@
       <a href="{{ url_for('crisis') }}" class="btn btn-zs-lavender text-center" data-ur="ہیلپ لائنز دیکھیں" data-en="View Helplines">ہیلپ لائنز دیکھیں</a>
     </div>
 
-    <!-- Ensemble details (Only visible for PHQ-9) -->
-    <div id="ensemble-details-box" class="mb-4 d-none">
-      <h4 class="mb-3 text-center" data-ur="اے آئی ماڈل کے نتائج" data-en="AI Ensemble Insights">اے آئی ماڈل کے نتائج</h4>
-      <div class="model-vote-row">
-        <span>Random Forest</span>
-        <span><span id="vote-rf">-</span> <span id="conf-rf" class="model-conf"></span></span>
-      </div>
-      <div class="model-vote-row">
-        <span>SVM</span>
-        <span><span id="vote-svm">-</span> <span id="conf-svm" class="model-conf"></span></span>
-      </div>
-      <div class="model-vote-row">
-        <span>XGBoost</span>
-        <span><span id="vote-xgb">-</span> <span id="conf-xgb" class="model-conf"></span></span>
-      </div>
-      <div class="model-vote-row model-agreement-row">
-        <span data-ur="اجماع (Agreement)" data-en="Ensemble Agreement">اجماع (Agreement)</span>
-        <span id="vote-agreement">-</span>
-      </div>
-    </div>
-
     <!-- Actions / Next Steps -->
     <div class="d-flex flex-column gap-2 mt-4">
       <a href="{{ url_for('resources') }}" class="btn btn-find-help text-center"
@@ -331,14 +311,21 @@ let chatPendingItem = null;
 let chatBusy = false;
 let chatStopped = false;
 let chatTransientFails = 0;
+// Language actually in use for the conversation. The server echoes it back
+// (e.g. the user started writing Urdu script while the UI was English).
+let chatLang = null;
 let crisisCardShown = false;
+
+// Remembered state for signed-in users, fetched once per page load from
+// /api/user/profile: consent status + demographics derived from their own
+// completed screenings. null = guest, or fetch failed -> behave like a
+// first-timer and ask normally.
+let userProfile = null;
 
 // Mirrors CRISIS_CONTACTS in backend/routes/chat.py - used only if the server
 // response somehow omits them. Keep both in sync with templates/crisis.html.
 const DEFAULT_CRISIS_CONTACTS = [
-  { name: 'Umang', dial: '03117786264', display: '0311-7786264' },
-  { name: 'NYH Helpdesk', dial: '080069457', display: '0800-69457' },
-  { name: 'Rescue', dial: '1122', display: '1122' }
+  { name: 'Umang', dial: '03117786264', display: '0311-7786264' }
 ];
 
 function selectAssessment(type) {
@@ -350,7 +337,73 @@ function selectAssessment(type) {
 
 function selectMode(mode) {
   currentAssessmentMode = mode;
-  goToStage('consent');
+  advanceAfterMode();
+}
+
+// Everything a returning user has already done is skipped: consent and the
+// account confirmation for anyone who has completed a screening before, and
+// the demographics form once age/gender are on file. Assessment choice and
+// screening mode are per-test, so those two are always asked.
+function advanceAfterMode() {
+  if (userProfile && userProfile.consented) {
+    if (userProfile.age_group && userProfile.gender) {
+      startQuestions();
+    } else {
+      prefillSavedDetails();
+      goToStage('details');
+    }
+  } else {
+    goToStage('consent');
+  }
+}
+
+function prefillSavedDetails() {
+  if (!userProfile) return;
+  if (userProfile.age_group) document.getElementById('age-group').value = userProfile.age_group;
+  if (userProfile.gender) document.getElementById('gender').value = userProfile.gender;
+}
+
+// "Continue with this account" — the last gate before the test. Demographics
+// already on file go straight to the questions, no form.
+function confirmAccountContinue() {
+  if (userProfile && userProfile.age_group && userProfile.gender) {
+    startQuestions();
+  } else {
+    prefillSavedDetails();
+    goToStage('details');
+  }
+}
+
+// Leaving for the login page keeps the in-progress choice so the flow can
+// resume where it stopped instead of restarting at assessment selection.
+function goToLogin() {
+  try {
+    sessionStorage.setItem('zs_screening_resume', JSON.stringify({
+      assessment: currentAssessment,
+      mode: currentAssessmentMode,
+      ts: Date.now()
+    }));
+  } catch (e) { /* private mode — worst case the flow restarts */ }
+  window.location.href = '/login?next=/screening';
+}
+
+function backFromDetails() {
+  // The consent/identity stages are skipped for returning users; the Back
+  // button should land on a stage they actually saw.
+  if (userProfile && userProfile.consented) goToStage('mode');
+  else goToStage('identity');
+}
+
+function consumeResumeState() {
+  try {
+    const raw = sessionStorage.getItem('zs_screening_resume');
+    if (!raw) return null;
+    sessionStorage.removeItem('zs_screening_resume');
+    const s = JSON.parse(raw);
+    if (!s || !s.assessment) return null;
+    if (Date.now() - (s.ts || 0) > 30 * 60 * 1000) return null;
+    return s;
+  } catch (e) { return null; }
 }
 
 function goToStage(stageId) {
@@ -438,6 +491,7 @@ async function startConversation() {
   chatBusy = false;
   chatStopped = false;
   chatTransientFails = 0;
+  chatLang = null;
   crisisCardShown = false;
 
   hideChatFormOffer();
@@ -489,6 +543,7 @@ function unlockChatInput() {
 function updateChatProgress() {
   const total = currentQuestions.length;
   const settled = Object.keys(chatCoverage).length;
+  const remaining = Math.max(total - settled, 0);
   const pct = total ? Math.round((settled / total) * 100) : 0;
   const bar = document.getElementById('chat-progress');
   if (bar) bar.style.width = `${pct}%`;
@@ -496,8 +551,8 @@ function updateChatProgress() {
   const note = document.getElementById('chat-coverage-note');
   if (note) {
     note.textContent = getCurrentLang() === 'ur'
-      ? `بات چیت جاری ہے — اب تک ${settled} موضوعات واضح ہوئے`
-      : `Conversation in progress - ${settled} of ${total} areas clear so far`;
+      ? `بات چیت جاری ہے — ${settled} از ${total} موضوعات واضح ہو چکے ہیں، ${remaining} باقی`
+      : `Conversation in progress — ${settled} of ${total} areas covered, ${remaining} to go`;
   }
 }
 
@@ -511,7 +566,7 @@ async function requestScreeningTurn() {
   try {
     data = await Api.chat.screeningTurn({
       assessment_type: currentAssessment,
-      language: getCurrentLang(),
+      language: chatLang || getCurrentLang(),
       transcript: chatTranscript,
       prior_coverage: chatCoverage,
       prior_clarifications: chatClarifications,
@@ -559,6 +614,8 @@ async function requestScreeningTurn() {
   chatTransientFails = 0;
   if (data.coverage) chatCoverage = data.coverage;
   if (data.clarifications) chatClarifications = data.clarifications;
+  // Stick with the language the server actually replied in (Urdu stays Urdu).
+  if (data.language === 'ur' || data.language === 'en') chatLang = data.language;
 
   const reply = data.reply || '';
   if (reply) {
@@ -755,6 +812,16 @@ function renderQuestion() {
   // Update progress bar
   const pct = ((currentQuestionIndex) / currentQuestions.length) * 100;
   document.getElementById('screening-progress').style.width = `${pct}%`;
+
+  // "How much is left" — answered count, not just the current position.
+  const progressNote = document.getElementById('screening-progress-note');
+  if (progressNote) {
+    const answered = answers.filter(a => a !== null && a !== undefined).length;
+    const remaining = currentQuestions.length - answered;
+    progressNote.textContent = lang === 'ur'
+      ? `سوال ${currentQuestionIndex + 1} از ${currentQuestions.length} — ${remaining} سوال باقی`
+      : `Question ${currentQuestionIndex + 1} of ${currentQuestions.length} — ${remaining} to go`;
+  }
 }
 
 function setAnswer(val) {
@@ -791,8 +858,10 @@ function prevQuestion() {
 // Submission and Results
 // ────────────────────────────────────────────────────────
 async function submitScreening() {
-  const age = document.getElementById('age-group').value;
-  const gen = document.getElementById('gender').value;
+  // Saved demographics win — the details form is skipped for returning
+  // users, so its selects would still hold the placeholder defaults.
+  const age = (userProfile && userProfile.age_group) || document.getElementById('age-group').value;
+  const gen = (userProfile && userProfile.gender) || document.getElementById('gender').value;
   const lang = getCurrentLang();
 
   // If in standard form mode, disable next button
@@ -876,22 +945,6 @@ function displayResults(data) {
       : "Your symptoms seem to be in a severe range. We highly recommend consulting a certified healthcare professional.";
   }
   desc.textContent = feedbackText;
-
-  // Ensemble votes + per-model confidence visualization
-  const ensembleBox = document.getElementById('ensemble-details-box');
-  if (data.assessment_type === 'phq9' && data.model_votes) {
-    ensembleBox.classList.remove('d-none');
-    const mv = data.model_votes;
-    document.getElementById('vote-rf').textContent = mv.random_forest.prediction;
-    document.getElementById('conf-rf').textContent = `(${mv.random_forest.confidence}%)`;
-    document.getElementById('vote-svm').textContent = mv.svm.prediction;
-    document.getElementById('conf-svm').textContent = `(${mv.svm.confidence}%)`;
-    document.getElementById('vote-xgb').textContent = mv.xgboost.prediction;
-    document.getElementById('conf-xgb').textContent = `(${mv.xgboost.confidence}%)`;
-    document.getElementById('vote-agreement').textContent = mv.ensemble_agreement || '-';
-  } else {
-    ensembleBox.classList.add('d-none');
-  }
 }
 
 function resetScreening() {
@@ -907,6 +960,7 @@ function resetScreening() {
   chatBusy = false;
   chatStopped = false;
   chatTransientFails = 0;
+  chatLang = null;
   crisisCardShown = false;
   hideChatFormOffer();
   document.getElementById('chat-crisis-card').classList.add('d-none');
@@ -914,6 +968,35 @@ function resetScreening() {
   document.getElementById('consent-next-btn').disabled = true;
   goToStage('select');
 }
+
+// ── Init ────────────────────────────────────────────────────────
+// Signed-in users get their remembered demographics + consent status up
+// front, so the flow can skip whatever has already been done. A user who
+// left for the login page resumes exactly where the flow stopped.
+document.addEventListener('DOMContentLoaded', async () => {
+  if (authGetToken()) {
+    try { userProfile = await Api.user.profile(); }
+    catch (e) { userProfile = null; }  // on failure: behave like a first-timer
+  }
+
+  const resume = authGetToken() ? consumeResumeState() : null;
+  if (resume) {
+    currentAssessment = resume.assessment;
+    currentQuestions = currentAssessment === 'phq9' ? PHQ9_QUESTIONS : GAD7_QUESTIONS;
+    answers = new Array(currentQuestions.length).fill(null);
+    currentAssessmentMode = resume.mode || 'form';
+    prefillSavedDetails();
+    const lang = getCurrentLang();
+    showFlash(lang === 'ur'
+      ? 'آپ کی جاری جانچ وہیں سے دوبارہ شروع ہو رہی ہے۔'
+      : 'Resuming your screening where you left off.', 'info');
+    // Consent was already given in this same journey, before the login detour.
+    if (userProfile && userProfile.age_group && userProfile.gender) startQuestions();
+    else goToStage('details');
+    return;
+  }
+  goToStage('select');
+});
 </script>
 
 <style>

@@ -32,45 +32,61 @@ function authClear() {
   sessionStorage.removeItem(USER_KEY);
 }
 
+// Effective role of the signed-in user: 'admin' | 'therapist' | 'patient'.
+// is_admin wins for backward compatibility (matches the server's logic).
+function authGetRole() {
+  const user = authGetUser();
+  if (!user) return null;
+  if (user.is_admin) return 'admin';
+  return user.role || 'patient';
+}
+
 // ── Header UI update ──────────────────────────────────────────
 function authUpdateHeader() {
   const user = authGetUser();
   const guestId = authGetGuestId();
 
-  const loggedOut = document.getElementById('menu-auth-logged-out');
-  const loggedIn  = document.getElementById('menu-auth-logged-in');
-  const badge     = document.getElementById('nav-user-badge');
-  const adminItem = document.getElementById('admin-nav-item');
-  const dashItem  = document.getElementById('dashboard-nav-item');
+  const loggedOut   = document.getElementById('menu-auth-logged-out');
+  const loggedIn    = document.getElementById('menu-auth-logged-in');
+  const badge       = document.getElementById('nav-user-badge');
+  const adminItem   = document.getElementById('admin-nav-item');
+  const dashItem    = document.getElementById('dashboard-nav-item');
+  const therapistItem = document.getElementById('therapist-nav-item');
 
   if (user) {
+    const role = authGetRole();
     loggedOut?.classList.add('d-none');
     loggedIn?.classList.remove('d-none');
     if (badge) {
       const lang = document.documentElement.getAttribute('lang') === 'ur' ? 'ur' : 'en';
-      const roleLabel = user.is_admin
+      const roleLabel = role === 'admin'
         ? (lang === 'ur' ? 'ایڈمن' : 'Admin')
-        : (lang === 'ur' ? 'صارف' : 'User');
+        : role === 'therapist'
+          ? (lang === 'ur' ? 'معالج' : 'Therapist')
+          : (lang === 'ur' ? 'صارف' : 'User');
       badge.textContent = `${user.email} · ${roleLabel}`;
     }
-    // Show admin tab only for admin users
+    // Each role sees only its own workspace tab.
     if (adminItem) {
-      user.is_admin ? adminItem.classList.remove('d-none') : adminItem.classList.add('d-none');
+      role === 'admin' ? adminItem.classList.remove('d-none') : adminItem.classList.add('d-none');
     }
-    // The personal dashboard tab belongs to regular accounts; admins live on
-    // the admin dashboard only.
+    if (therapistItem) {
+      role === 'therapist' ? therapistItem.classList.remove('d-none') : therapistItem.classList.add('d-none');
+    }
     if (dashItem) {
-      user.is_admin ? dashItem.classList.add('d-none') : dashItem.classList.remove('d-none');
+      role === 'patient' ? dashItem.classList.remove('d-none') : dashItem.classList.add('d-none');
     }
   } else if (guestId) {
     loggedOut?.classList.remove('d-none');
     loggedIn?.classList.add('d-none');
     if (adminItem) adminItem.classList.add('d-none');
+    if (therapistItem) therapistItem.classList.add('d-none');
     if (dashItem)  dashItem.classList.add('d-none');
   } else {
     loggedOut?.classList.remove('d-none');
     loggedIn?.classList.add('d-none');
     if (adminItem) adminItem.classList.add('d-none');
+    if (therapistItem) therapistItem.classList.add('d-none');
     if (dashItem)  dashItem.classList.add('d-none');
   }
 }
@@ -78,6 +94,14 @@ function authUpdateHeader() {
 // ── Actions ──────────────────────────────────────────────────
 async function handleSignup(email, password) {
   const data = await Api.auth.signup(email, password);
+  authSetSession(data.token, data.user);
+  authUpdateHeader();
+  return data.user;
+}
+
+// Therapist registration — the account starts UNVERIFIED (admin must verify).
+async function handleSignupTherapist(payload) {
+  const data = await Api.auth.signupTherapist(payload);
   authSetSession(data.token, data.user);
   authUpdateHeader();
   return data.user;
@@ -120,6 +144,16 @@ function requireAdmin() {
   if (!user || !user.is_admin) { window.location.href = '/'; return false; }
   return true;
 }
+// Therapist portal guard — client-side convenience only; every
+// /api/therapist/* request re-checks the role + verification server-side.
+function requireTherapist() {
+  const user = authGetUser();
+  if (!user || authGetRole() !== 'therapist') {
+    window.location.href = '/';
+    return false;
+  }
+  return true;
+}
 // Personal dashboard guard — requires a real account (not a guest session).
 function requireUser() {
   const user = authGetUser();
@@ -129,9 +163,14 @@ function requireUser() {
     window.location.href = `/login?next=${next}`;
     return false;
   }
-  // Admins belong on the admin dashboard — never drop them on the personal one.
-  if (user.is_admin) {
+  // Admins and therapists belong on their own dashboards — never the personal one.
+  const role = authGetRole();
+  if (role === 'admin') {
     window.location.href = '/admin';
+    return false;
+  }
+  if (role === 'therapist') {
+    window.location.href = '/therapist';
     return false;
   }
   return true;
@@ -155,15 +194,18 @@ document.addEventListener('DOMContentLoaded', authUpdateHeader);
 window.authGetToken    = authGetToken;
 window.authGetGuestId  = authGetGuestId;
 window.authGetUser     = authGetUser;
+window.authGetRole     = authGetRole;
 window.authSetSession  = authSetSession;
 window.authSetGuest    = authSetGuest;
 window.authClear       = authClear;
 window.handleSignup    = handleSignup;
+window.handleSignupTherapist = handleSignupTherapist;
 window.handleLogin     = handleLogin;
 window.handleGuestSession = handleGuestSession;
 window.handleLogout    = handleLogout;
 window.quickExit       = quickExit;
 window.requireAuth     = requireAuth;
 window.requireAdmin    = requireAdmin;
+window.requireTherapist = requireTherapist;
 window.requireUser     = requireUser;
 window.showFlash       = showFlash;

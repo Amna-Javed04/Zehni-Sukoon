@@ -149,6 +149,34 @@ def _trend_series(rows):
 
 
 # ── Endpoints ──────────────────────────────────────────────────────────
+# ── Screening profile (remembered demographics + consent) ─────────────
+@user_bp.route('/profile', methods=['GET'])
+@require_auth
+def profile():
+    """
+    GET /api/user/profile — what the screening flow is allowed to skip.
+
+    Both values are DERIVED from the user's own completed screenings, so no
+    personal data is stored beyond what a screening already records:
+    - consented: True once at least one screening has been COMPLETED.
+    - age_group / gender: the most recent non-null values on file, so a
+      returning user is never asked for demographics again.
+    """
+    rows = (
+        Screening.query.filter_by(user_id=g.user_id)
+        .filter(Screening.total_score.isnot(None))
+        .order_by(Screening.created_at.desc())
+        .all()
+    )
+    age_group = next((r.age_group for r in rows if r.age_group), None)
+    gender = next((r.gender for r in rows if r.gender), None)
+    return jsonify({
+        'consented': bool(rows),
+        'age_group': age_group,
+        'gender': gender,
+    }), 200
+
+
 @user_bp.route('/overview', methods=['GET'])
 @require_auth
 def overview():

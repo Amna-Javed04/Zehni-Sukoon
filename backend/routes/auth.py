@@ -9,6 +9,8 @@ Security rules:
 import uuid
 import os
 import smtplib
+import secrets
+import string
 from email.message import EmailMessage
 from datetime import datetime, timezone, timedelta
 from flask import Blueprint, request, jsonify, current_app, url_for
@@ -16,6 +18,20 @@ import jwt
 from ..models import db, User, GuestSession
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
+
+# Invite codes are short, human-readable, and unambiguous (no 0/O/1/I).
+_INVITE_ALPHABET = ''.join(
+    c for c in string.ascii_uppercase + string.digits if c not in 'O0I1'
+)
+
+
+def _generate_invite_code(length: int = 6) -> str:
+    """Short random therapist invite code, retrying on the (unlikely) unique clash."""
+    for _ in range(10):
+        code = ''.join(secrets.choice(_INVITE_ALPHABET) for _ in range(length))
+        if not User.query.filter_by(invite_code=code).first():
+            return code
+    return secrets.token_hex(6).upper()   # extremely unlikely fallback
 
 
 def _generate_token(user_id: int, is_admin: bool) -> str:
@@ -52,7 +68,7 @@ def signup():
     if User.query.filter_by(email=email).first():
         return jsonify({'error': 'An account with this email already exists'}), 409
 
-    user = User(email=email, is_admin=False)   # is_admin hardcoded False — no bypass possible
+    user = User(email=email, is_admin=False, role='patient')   # is_admin hardcoded False — no bypass possible
     user.set_password(password)
     db.session.add(user)
     db.session.commit()
@@ -65,7 +81,70 @@ def signup():
             'id': user.id,
             'email': user.email,
             'is_admin': user.is_admin,
-            'redirect_to': 'dashboard',    # all new users → their dashboard
+            'role': user.role,
+            'redirect_to': 'dashboard',    # all new patients → their dashboard
+        }
+    }), 201
+
+
+@auth_bp.route('/signup-therapist', methods=['POST'])
+def signup_therapist():
+    """
+    POST /api/auth/signup-therapist
+    Body: { name, email, password, license_number?, language? }
+    Creates a therapist account with is_admin = False and is_verified = False.
+    An admin must verify the account before it can see patients or accept links.
+    Signup can NEVER create an admin.
+    Returns: { message, token, user: { id, email, role, is_verified } }
+    """
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({'error': 'No JSON body provided'}), 400
+
+    name = (data.get('name') or '').strip()
+    email = (data.get('email') or '').strip().lower()
+    password = data.get('password', '')
+    license_number = (data.get('license_number') or '').strip() or None
+
+    if not name or len(name) > 120:
+        return jsonify({'error': 'name is required (max 120 characters)'}), 400
+    if not email or not password:
+        return jsonify({'error': 'email and password are required'}), 400
+    if len(password) < 8:
+        return jsonify({'error': 'Password must be at least 8 characters'}), 400
+    # Required, not optional: admins verify therapists BY license number,
+    # so a signup without one cannot be reviewed meaningfully.
+    if not license_number:
+        return jsonify({'error': 'license_number is required — therapists are verified by license'}), 400
+    license_number = license_number[:100]
+
+    if User.query.filter_by(email=email).first():
+        return jsonify({'error': 'An account with this email already exists'}), 409
+
+    user = User(
+        email=email,
+        role='therapist',
+        is_admin=False,          # hard-coded — no bypass possible
+        is_verified=False,       # admin verification required
+        display_name=name,
+        license_number=license_number,
+        invite_code=_generate_invite_code(),
+    )
+    user.set_password(password)
+    db.session.add(user)
+    db.session.commit()
+
+    token = _generate_token(user.id, user.is_admin)
+    return jsonify({
+        'message': 'Therapist account created. Pending admin verification.',
+        'token': token,
+        'user': {
+            'id': user.id,
+            'email': user.email,
+            'is_admin': user.is_admin,
+            'role': user.role,
+            'is_verified': user.is_verified,
+            'redirect_to': 'therapist',
         }
     }), 201
 
@@ -75,8 +154,8 @@ def login():
     """
     POST /api/auth/login
     Body: { email, password }
-    Returns: { token, user: { id, email, is_admin, redirect_to } }
-    redirect_to = 'admin' if is_admin else 'dashboard'
+    Returns: { token, user: { id, email, is_admin, role, redirect_to } }
+    redirect_to = 'admin' (is_admin) | 'therapist' (role) | 'dashboard' (patient)
     """
     data = request.get_json(silent=True)
     if not data:
@@ -89,6 +168,14 @@ def login():
     if not user or not user.check_password(password):
         return jsonify({'error': 'Invalid email or password'}), 401
 
+    # Route by role: admins → /admin, therapists → /therapist, patients → /dashboard
+    if user.is_admin:
+        redirect_to = 'admin'
+    elif user.role == 'therapist':
+        redirect_to = 'therapist'
+    else:
+        redirect_to = 'dashboard'
+
     token = _generate_token(user.id, user.is_admin)
     return jsonify({
         'token': token,
@@ -96,7 +183,9 @@ def login():
             'id': user.id,
             'email': user.email,
             'is_admin': user.is_admin,
-            'redirect_to': 'admin' if user.is_admin else 'dashboard',
+            'role': ('admin' if user.is_admin else user.role),
+            'is_verified': (user.is_verified if user.role == 'therapist' else None),
+            'redirect_to': redirect_to,
         }
     }), 200
 

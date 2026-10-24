@@ -63,11 +63,17 @@ def create_app(env: str = None) -> Flask:
     from .routes.admin import admin_bp
     from .routes.chat import chat_bp
     from .routes.user import user_bp
+    from .routes.therapist import therapist_bp, patient_link_bp
+    from .routes.pdf_export import screening_pdf_bp, therapist_pdf_bp
     app.register_blueprint(auth_bp)
     app.register_blueprint(screening_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(chat_bp)
     app.register_blueprint(user_bp)
+    app.register_blueprint(therapist_bp)
+    app.register_blueprint(patient_link_bp)
+    app.register_blueprint(screening_pdf_bp)
+    app.register_blueprint(therapist_pdf_bp)
 
     # --- Page Routes (serve templates) ---
     @app.route('/')
@@ -107,6 +113,12 @@ def create_app(env: str = None) -> Flask:
     @app.route('/dashboard')
     def user_dashboard():
         return render_template('dashboard.html')
+
+    @app.route('/therapist')
+    def therapist_dashboard():
+        # Client-side guarded: requireTherapist() in JS redirects anyone
+        # who is not a verified therapist (the API double-checks per request).
+        return render_template('therapist.html')
 
     @app.route('/crisis')
     def crisis():

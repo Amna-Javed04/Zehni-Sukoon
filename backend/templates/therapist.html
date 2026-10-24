@@ -1,0 +1,632 @@
+{% extends 'base.html' %}
+{% block title %}معالج پورٹل — Therapist Portal{% endblock %}
+{% block meta_description %}اپنے منسلک مریضوں کی جانچ کے ریکارڈ — صرف فعال ربط کے دوران۔{% endblock %}
+
+{% block content %}
+<div class="container section-padding">
+  <!-- Hidden until requireTherapist() confirms a therapist account -->
+  <div id="therapist-wrapper" class="d-none">
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+      <div>
+        <h2 class="section-title mb-1"
+            data-ur="معالج پورٹل"
+            data-en="Therapist Portal">معالج پورٹل</h2>
+        <p class="text-muted mb-0"
+           data-ur="صرف ان مریضوں کا ڈیٹا جو آپ سے منسلک ہیں — اور صرف جب تک ربط فعال ہے۔ چیٹ گفتگو کبھی نظر نہیں آتی۔"
+           data-en="Only patients linked to you — and only while the link is active. Chat conversations are never shown.">صرف ان مریضوں کا ڈیٹا جو آپ سے منسلک ہیں — اور صرف جب تک ربط فعال ہے۔ چیٹ گفتگو کبھی نظر نہیں آتی۔</p>
+      </div>
+    </div>
+
+    <!-- Pending verification notice — shown right after registration and on
+         every visit until an admin approves the account. -->
+    <div id="pending-banner" class="glass-card p-5 mb-4 text-center pending-card d-none">
+      <div class="pending-icon-wrap mb-3" aria-hidden="true">
+        <i class="fas fa-clock"></i>
+      </div>
+      <h3 class="mb-2"
+          data-ur="آپ کا کھاتہ ایڈمن کی منظوری کا انتظار کر رہا ہے"
+          data-en="Your account is pending admin approval">آپ کا کھاتہ ایڈمن کی منظوری کا انتظار کر رہا ہے</h3>
+      <p class="pending-text mb-4"
+         data-ur="شکریہ! آپ کا معالج کھاتہ بن چکا ہے۔ ایڈمن آپ کا لائسنس نمبر چیک کر کے تصدیق کرے گا۔ تصدیق کے بعد یہاں آپ کا دعوتی کوڈ نظر آئے گا اور آپ مریضوں کو منسلک کر سکیں گے۔"
+         data-en="Thank you! Your therapist account has been created. An admin will review your license number and approve it. After approval your invite code will appear here and you will be able to connect patients.">شکریہ! آپ کا معالج کھاتہ بن چکا ہے۔ ایڈمن آپ کا لائسنس نمبر چیک کر کے تصدیق کرے گا۔ تصدیق کے بعد یہاں آپ کا دعوتی کوڈ نظر آئے گا اور آپ مریضوں کو منسلک کر سکیں گے۔</p>
+      <button type="button" class="btn btn-zs-outline" onclick="handleLogout()"
+              data-ur="باہر نکلیں" data-en="Log out">باہر نکلیں</button>
+    </div>
+
+    <!-- Invite code card -->
+    <div id="invite-card" class="glass-card p-4 mb-4 d-none">
+      <h4 class="mb-2" data-ur="آپ کا دعوتی کوڈ" data-en="Your invite code">آپ کا دعوتی کوڈ</h4>
+      <p class="muted-line mb-3"
+         data-ur="یہ کوڈ اپنے مریضوں کو دیں۔ مریض کھاتہ بنا کر رضامندی کے ساتھ آپ سے منسلک ہوگا۔"
+         data-en="Share this code with your patients. They create an account and connect to you after giving consent.">یہ کوڈ اپنے مریضوں کو دیں۔ مریض کھاتہ بنا کر رضامندی کے ساتھ آپ سے منسلک ہوگا۔</p>
+      <div class="invite-row">
+        <span id="invite-code" class="invite-code-chip">——————</span>
+        <button type="button" class="btn btn-zs-outline btn-sm" onclick="copyInviteCode()">
+          <i class="fas fa-copy" aria-hidden="true"></i>
+          <span data-ur="کاپی کریں" data-en="Copy">کاپی کریں</span>
+        </button>
+        <button type="button" class="btn btn-zs-outline btn-sm" onclick="regenerateInviteCode()">
+          <i class="fas fa-rotate" aria-hidden="true"></i>
+          <span data-ur="نیا کوڈ بنائیں" data-en="Regenerate">نیا کوڈ بنائیں</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Patient list (triage-ordered: crisis first, then severity, then recency) -->
+    <div id="patients-card" class="glass-card p-4 mb-4 d-none">
+      <h4 class="mb-3" data-ur="منسلک مریض" data-en="Linked patients">منسلک مریض</h4>
+
+      <div class="triage-filter-row mb-3">
+        <button type="button" id="attention-filter-btn" class="triage-filter-btn"
+                onclick="toggleAttentionFilter()" aria-pressed="false">
+          <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
+          <span data-ur="صرف غیر معمولی مریض" data-en="Needs attention only">صرف غیر معمولی مریض</span>
+        </button>
+        <span class="triage-hint"
+              data-ur="ترتیب: بحران سب سے پہلے، پھر شدت، پھر تازہ ترین جانچ"
+              data-en="Order: crisis first, then severity, then most recent screening">ترتیب: بحران سب سے پہلے، پھر شدت، پھر تازہ ترین جانچ</span>
+      </div>
+
+      <div class="table-wrap">
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th data-ur="نام" data-en="Name">نام</th>
+              <th data-ur="عمر / جنس" data-en="Age / Gender">عمر / جنس</th>
+              <th data-ur="حالیہ جانچ" data-en="Latest screening">حالیہ جانچ</th>
+              <th data-ur="شدت" data-en="Severity">شدت</th>
+              <th data-ur="الرٹ" data-en="Alert">الرٹ</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="patients-body">
+            <tr><td colspan="6" class="muted-row" data-ur="لوڈ ہو رہا ہے…" data-en="Loading…">لوڈ ہو رہا ہے…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p id="patients-caption" class="history-caption"></p>
+    </div>
+
+    <!-- Empty state -->
+    <div id="patients-empty" class="glass-card empty-state d-none">
+      <i class="fas fa-seedling empty-icon" aria-hidden="true"></i>
+      <h4 data-ur="ابھی کوئی مریض منسلک نہیں" data-en="No linked patients yet">ابھی کوئی مریض منسلک نہیں</h4>
+      <p data-ur="اپنا دعوتی کوڈ مریضوں کو دیں — وہ اپنے ڈیش بورڈ سے رضامندی کے بعد آپ سے منسلک ہو جائیں گے۔"
+         data-en="Share your invite code — patients connect from their dashboard after giving consent.">اپنا دعوتی کوڈ مریضوں کو دیں — وہ اپنے ڈیش بورڈ سے رضامندی کے بعد آپ سے منسلک ہو جائیں گے۔</p>
+    </div>
+
+    <!-- Patient detail -->
+    <div id="patient-detail" class="d-none">
+      <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3">
+        <div>
+          <h3 class="section-title mb-1" id="detail-name">—</h3>
+          <p class="text-muted mb-0" id="detail-meta"></p>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          <button type="button" class="btn btn-zs-outline" onclick="downloadPatientPdf()"
+                  data-ur="PDF ڈاؤن لوڈ" data-en="Download PDF">PDF ڈاؤن لوڈ</button>
+          <button type="button" class="btn btn-zs-outline" onclick="closePatientDetail()"
+                  data-ur="واپس فہرست پر" data-en="Back to list">واپس فہرست پر</button>
+        </div>
+      </div>
+
+      <div id="detail-crisis-banner" class="crisis-banner d-none">
+        <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
+        <span data-ur="اس مریض کے ریکارڈ میں خود کو نقصان کا اشارہ ہے — براہ کرم فوری طور پر رابطہ کریں۔"
+              data-en="This patient's records include a self-harm signal — please follow up immediately.">اس مریض کے ریکارڈ میں خود کو نقصان کا اشارہ ہے — براہ کرم فوری طور پر رابطہ کریں۔</span>
+      </div>
+
+      <div class="glass-card p-4 mb-4">
+        <h4 class="mb-3 text-center"
+            data-ur="سکور کا رجحان (وقت کے ساتھ)"
+            data-en="Score Trend Over Time">سکور کا رجحان (وقت کے ساتھ)</h4>
+        <div class="chart-container-trend"><canvas id="detail-chart-trend"></canvas></div>
+      </div>
+
+      <div class="glass-card p-4">
+        <h4 class="mb-3" data-ur="جانچ کی ریکارڈز" data-en="Screening records">جانچ کی ریکارڈز</h4>
+        <div class="table-wrap">
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th data-ur="تاریخ" data-en="Date">تاریخ</th>
+                <th data-ur="قسم" data-en="Type">قسم</th>
+                <th data-ur="سکور" data-en="Score">سکور</th>
+                <th data-ur="شدت" data-en="Severity">شدت</th>
+                <th data-ur="جوابات (آئٹم بہ آئٹم)" data-en="Item-level answers">جوابات (آئٹم بہ آئٹم)</th>
+                <th data-ur="الرٹ" data-en="Alert">الرٹ</th>
+              </tr>
+            </thead>
+            <tbody id="detail-history-body">
+              <tr><td colspan="6" class="muted-row" data-ur="لوڈ ہو رہا ہے…" data-en="Loading…">لوڈ ہو رہا ہے…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="history-caption"
+           data-ur="رضامندی: چیٹ گفتگو کے ریکارڈ کبھی نہیں دکھائے جاتے۔"
+           data-en="Consent scope: chat transcripts are never shown here.">رضامندی: چیٹ گفتگو کے ریکارڈ کبھی نہیں دکھائے جاتے۔</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let lastPatients = null;
+let trendChartInstance = null;
+let currentPatientId = null;
+
+const brandColors = {
+  green:        '#4e635e',
+  greenLight:   '#839791',
+  lavender:     '#65587a',
+  lavenderLight:'#e0d9eb',
+  dark:         '#374744',
+  cream:        '#fbf9f8',
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (!requireTherapist()) return;
+  document.getElementById('therapist-wrapper').classList.remove('d-none');
+  loadInviteCode();
+  loadPatients();
+
+  // Re-render dynamic rows when the language flips.
+  new MutationObserver(() => {
+    if (lastPatients) renderPatients(lastPatients);
+  }).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+});
+
+// ── Invite code ───────────────────────────────────────────────────────
+async function loadInviteCode() {
+  try {
+    const data = await Api.therapist.inviteCode();
+    document.getElementById('invite-code').textContent = data.invite_code || '——————';
+    document.getElementById('invite-card').classList.remove('d-none');
+    document.getElementById('pending-banner').classList.add('d-none');
+    document.getElementById('patients-card').classList.remove('d-none');
+  } catch (err) {
+    if (err.status === 403) {
+      // Unverified therapist — show the pending notice, hide patient data.
+      document.getElementById('pending-banner').classList.remove('d-none');
+    } else {
+      showFlash(err.message || (getCurrentLang() === 'ur' ? 'کوڈ لوڈ نہیں ہو سکا' : 'Could not load invite code'), 'error');
+    }
+  }
+}
+
+async function copyInviteCode() {
+  const code = document.getElementById('invite-code').textContent.trim();
+  try {
+    await navigator.clipboard.writeText(code);
+    showFlash(getCurrentLang() === 'ur' ? 'کاپی ہو گیا۔' : 'Copied.', 'success');
+  } catch {
+    showFlash(getCurrentLang() === 'ur' ? 'کاپی نہیں ہو سکا' : 'Could not copy', 'error');
+  }
+}
+
+async function regenerateInviteCode() {
+  const lang = getCurrentLang();
+  const msg = lang === 'ur'
+    ? 'نیا کوڈ بنانے سے پرانا کوڈ کام نہیں کرے گا۔ جاری رکھیں؟'
+    : 'Regenerating invalidates the old code. Continue?';
+  if (!confirm(msg)) return;
+  try {
+    const data = await Api.therapist.regenerateCode();
+    document.getElementById('invite-code').textContent = data.invite_code || '——————';
+    showFlash(lang === 'ur' ? 'نیا کوڈ بن گیا ہے۔' : 'New code created.', 'success');
+  } catch (err) {
+    showFlash(err.message || (lang === 'ur' ? 'کوڈ نہیں بنا' : 'Could not regenerate'), 'error');
+  }
+}
+
+// ── Patient list ──────────────────────────────────────────────────────
+async function loadPatients() {
+  try {
+    const data = await Api.therapist.patients();
+    lastPatients = data.patients;
+    renderPatients(data.patients);
+    applyLanguage(getCurrentLang());
+  } catch (err) {
+    if (err.status === 403) return; // pending banner already covers this
+    showFlash(err.message || (getCurrentLang() === 'ur' ? 'فہرست لوڈ نہیں ہوئی' : 'Failed to load patients'), 'error');
+  }
+}
+
+// "Needs attention": any crisis signal, or a severe / moderately-severe latest
+// screening. Everything else is routine follow-up.
+let attentionOnly = false;
+
+function needsAttention(p) {
+  const sev = (p.latest_severity || '').toLowerCase();
+  return Boolean(p.crisis) || sev === 'severe' || sev === 'moderately severe';
+}
+
+function toggleAttentionFilter() {
+  attentionOnly = !attentionOnly;
+  const btn = document.getElementById('attention-filter-btn');
+  if (btn) {
+    btn.classList.toggle('active', attentionOnly);
+    btn.setAttribute('aria-pressed', String(attentionOnly));
+  }
+  if (lastPatients) renderPatients(lastPatients);
+}
+
+function renderPatients(patients) {
+  const tbody = document.getElementById('patients-body');
+  const caption = document.getElementById('patients-caption');
+  const empty = document.getElementById('patients-empty');
+  const card = document.getElementById('patients-card');
+  tbody.innerHTML = '';
+  const lang = getCurrentLang();
+
+  if (!patients || patients.length === 0) {
+    card.classList.add('d-none');
+    empty.classList.remove('d-none');
+    return;
+  }
+  card.classList.remove('d-none');
+  empty.classList.add('d-none');
+
+  // Server already triaged the full list; the filter narrows it further.
+  const visible = attentionOnly ? patients.filter(needsAttention) : patients;
+
+  if (visible.length === 0) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = 6;
+    td.className = 'muted-row';
+    td.textContent = lang === 'ur'
+      ? 'اس فلٹر میں کوئی مریض نہیں — سب کچھ ٹھیک لگ رہا ہے۔'
+      : 'No patients match this filter — nothing needs urgent attention.';
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+  }
+
+  for (const p of visible) {
+    const tr = document.createElement('tr');
+
+    const nameTd = document.createElement('td');
+    nameTd.textContent = p.name || '—';
+    tr.appendChild(nameTd);
+
+    tr.appendChild(cell(`${p.age_range || '—'} · ${p.gender || '—'}`));
+    tr.appendChild(cell(p.latest_date ? formatDate(p.latest_date, lang) : (lang === 'ur' ? 'کوئی جانچ نہیں' : 'No screening')));
+
+    const sevTd = document.createElement('td');
+    sevTd.appendChild(sevBadge(p.latest_severity));
+    tr.appendChild(sevTd);
+
+    const alertTd = document.createElement('td');
+    if (p.crisis) {
+      alertTd.innerHTML = `<span class="crisis-chip"><i class="fas fa-triangle-exclamation"></i> ${lang === 'ur' ? 'بحران اشارہ' : 'Crisis signal'}</span>`;
+    } else {
+      alertTd.innerHTML = `<span class="muted-row">—</span>`;
+    }
+    tr.appendChild(alertTd);
+
+    const actTd = document.createElement('td');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn btn-zs-outline btn-sm';
+    btn.textContent = lang === 'ur' ? 'تفصیل دیکھیں' : 'View';
+    btn.onclick = () => openPatientDetail(p.patient_id);
+    actTd.appendChild(btn);
+    tr.appendChild(actTd);
+
+    tbody.appendChild(tr);
+  }
+
+  if (caption) {
+    const attn = patients.filter(needsAttention).length;
+    const shown = attentionOnly
+      ? (lang === 'ur'
+          ? `فلٹر: ${visible.length} از ${patients.length} مریض دکھائے جا رہے ہیں`
+          : `Filtered: showing ${visible.length} of ${patients.length} patients`)
+      : '';
+    const base = lang === 'ur'
+      ? `کل ${patients.length} منسلک مریض — ${attn} کو توجہ درکار ہے۔`
+      : `${patients.length} linked patient${patients.length === 1 ? '' : 's'} — ${attn} need attention.`;
+    caption.textContent = shown ? `${base} ${shown}` : base;
+  }
+}
+
+// ── Patient detail ────────────────────────────────────────────────────
+async function openPatientDetail(patientId) {
+  currentPatientId = patientId;
+  try {
+    const data = await Api.therapist.patientScreenings(patientId);
+    document.getElementById('patient-detail').classList.remove('d-none');
+    document.getElementById('patients-card').classList.add('d-none');
+    document.getElementById('patients-empty').classList.add('d-none');
+
+    const lang = getCurrentLang();
+    document.getElementById('detail-name').textContent = data.patient?.name || '—';
+    const count = data.total ?? (data.screenings || []).length;
+    document.getElementById('detail-meta').textContent = lang === 'ur'
+      ? `کل ${count} جانچ ریکارڈ`
+      : `${count} screening record${count === 1 ? '' : 's'}`;
+
+    // Crisis banner if ANY record carries the flag
+    const hasCrisis = (data.screenings || []).some(s => s.crisis);
+    document.getElementById('detail-crisis-banner').classList.toggle('d-none', !hasCrisis);
+
+    renderDetailTrend(data.trend || []);
+    renderDetailHistory(data.screenings || []);
+    applyLanguage(getCurrentLang());
+  } catch (err) {
+    showFlash(err.message || (getCurrentLang() === 'ur' ? 'ڈیٹا لوڈ نہیں ہو سکا' : 'Could not load patient data'), 'error');
+    if (err.status === 403) closePatientDetail(); // link revoked meanwhile
+  }
+}
+
+function closePatientDetail() {
+  document.getElementById('patient-detail').classList.add('d-none');
+  currentPatientId = null;
+  if (lastPatients && lastPatients.length) {
+    document.getElementById('patients-card').classList.remove('d-none');
+  } else {
+    document.getElementById('patients-empty').classList.remove('d-none');
+  }
+}
+
+function renderDetailTrend(trend) {
+  const lang = getCurrentLang();
+  const labels = trend.map(t => {
+    const parts = (t.date || '').split('-');
+    return parts.length === 3 ? `${parts[1]}/${parts[2]}` : t.date;
+  });
+
+  const phqDataset = {
+    label: lang === 'ur' ? 'ڈپریشن (PHQ-9)' : 'Depression (PHQ-9)',
+    data: trend.map(t => t.phq9),
+    borderColor: brandColors.lavender,
+    backgroundColor: 'rgba(101,88,122,0.15)',
+    borderWidth: 3, tension: 0.3, spanGaps: true, fill: true,
+    pointBackgroundColor: brandColors.lavender, pointRadius: 4,
+  };
+  const gadDataset = {
+    label: lang === 'ur' ? 'گھبراہٹ (GAD-7)' : 'Anxiety (GAD-7)',
+    data: trend.map(t => t.gad7),
+    borderColor: brandColors.green,
+    backgroundColor: 'rgba(78,99,94,0.15)',
+    borderWidth: 3, tension: 0.3, spanGaps: true, fill: true,
+    pointBackgroundColor: brandColors.green, pointRadius: 4,
+  };
+
+  if (trendChartInstance) trendChartInstance.destroy();
+  const ctx = document.getElementById('detail-chart-trend').getContext('2d');
+  trendChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets: [phqDataset, gadDataset] },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12 } },
+        tooltip: {
+          callbacks: {
+            title: (items) => items[0] ? `${lang === 'ur' ? 'تاریخ' : 'Date'}: ${trend[items[0].dataIndex]?.date || ''}` : '',
+          },
+        },
+      },
+      scales: {
+        y: { beginAtZero: true, grid: { color: 'rgba(131,151,145,0.1)' } },
+        x: { grid: { display: false } },
+      },
+    },
+  });
+}
+
+function renderDetailHistory(screenings) {
+  const tbody = document.getElementById('detail-history-body');
+  tbody.innerHTML = '';
+  const lang = getCurrentLang();
+
+  if (!screenings || screenings.length === 0) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = 6;
+    td.className = 'muted-row';
+    td.textContent = lang === 'ur' ? 'کوئی ریکارڈ نہیں۔' : 'No records yet.';
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+    return;
+  }
+
+  for (const r of screenings) {
+    const tr = document.createElement('tr');
+    tr.appendChild(cell(formatDate(r.date, lang)));
+    tr.appendChild(cell(r.type === 'phq9' ? 'PHQ-9' : r.type === 'gad7' ? 'GAD-7' : (r.type || '—')));
+    tr.appendChild(cell(String(r.score ?? '—')));
+
+    const sevTd = document.createElement('td');
+    sevTd.appendChild(sevBadge(r.severity));
+    tr.appendChild(sevTd);
+
+    // Item-level answers (0-3 per question) — allowed by the consent screen.
+    const ansTd = document.createElement('td');
+    ansTd.className = 'answers-cell';
+    ansTd.appendChild(answerChips(r.answers));
+    tr.appendChild(ansTd);
+
+    const alertTd = document.createElement('td');
+    if (r.crisis) {
+      alertTd.innerHTML = `<span class="crisis-chip"><i class="fas fa-triangle-exclamation"></i> ${lang === 'ur' ? 'بحران اشارہ' : 'Crisis signal'}</span>`;
+    } else {
+      alertTd.innerHTML = `<span class="muted-row">—</span>`;
+    }
+    tr.appendChild(alertTd);
+
+    tbody.appendChild(tr);
+  }
+}
+
+function answerChips(answers) {
+  const wrap = document.createElement('span');
+  wrap.className = 'answer-chips';
+  if (!answers || typeof answers !== 'object') {
+    wrap.textContent = '—';
+    return wrap;
+  }
+  for (const [key, val] of Object.entries(answers)) {
+    const chip = document.createElement('span');
+    chip.className = 'answer-chip';
+    chip.textContent = `${key}: ${val}`;
+    wrap.appendChild(chip);
+  }
+  return wrap;
+}
+
+// ── Small helpers (mirrors dashboard.html) ────────────────────────────
+function sevBadge(sev) {
+  const span = document.createElement('span');
+  const key = (sev || 'Unknown').toLowerCase().replace(/\s+/g, '-');
+  span.className = `sev-badge sev-${key}`;
+  const map = {
+    ur: {
+      'minimal': 'موثر نہیں', 'mild': 'ہلکا', 'moderate': 'درمیانہ',
+      'moderately-severe': 'درمیانہ شدید', 'severe': 'شدید', 'unknown': 'نامعلوم',
+    },
+    en: {
+      'minimal': 'Minimal', 'mild': 'Mild', 'moderate': 'Moderate',
+      'moderately-severe': 'Moderately Severe', 'severe': 'Severe', 'unknown': 'Unknown',
+    },
+  };
+  const lang = getCurrentLang();
+  span.textContent = (map[lang] || map.en)[key] || (sev || '—');
+  return span;
+}
+
+function cell(text) {
+  const td = document.createElement('td');
+  td.textContent = text;
+  return td;
+}
+
+function formatDate(iso, lang) {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso);
+    if (isNaN(d)) return iso;
+    return d.toLocaleDateString(lang === 'ur' ? 'ur-PK' : 'en-GB', { year: 'numeric', month: 'short', day: 'numeric' })
+      + ' · ' + d.toLocaleTimeString(lang === 'ur' ? 'ur-PK' : 'en-GB', { hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return iso;
+  }
+}
+
+async function downloadPatientPdf() {
+  if (!currentPatientId) return;
+  const lang = getCurrentLang();
+  try {
+    const blob = await Api.therapist.exportPatientPdf(currentPatientId);
+    downloadBlob(blob, `patient-${currentPatientId}-screenings-${new Date().toISOString().slice(0, 10)}.pdf`);
+    showFlash(lang === 'ur'
+      ? 'مریض کی اسکریننگ PDF ڈاؤن لوڈ ہو گئی۔'
+      : "The patient's screening PDF has been downloaded.", 'success');
+  } catch (err) {
+    showFlash(err.message || (lang === 'ur' ? 'PDF ڈاؤن لوڈ نہیں ہو سکی' : 'Could not download the PDF'), 'error');
+    if (err.status === 403) closePatientDetail();   // link revoked meanwhile
+  }
+}
+
+window.copyInviteCode = copyInviteCode;
+window.regenerateInviteCode = regenerateInviteCode;
+window.openPatientDetail = openPatientDetail;
+window.closePatientDetail = closePatientDetail;
+window.toggleAttentionFilter = toggleAttentionFilter;
+window.downloadPatientPdf = downloadPatientPdf;
+</script>
+
+<style>
+.empty-state { text-align: center; padding: 3rem 1.5rem; margin-bottom: 2rem; }
+.empty-icon { font-size: 3rem; color: #839791; display: block; margin-bottom: 1rem; }
+.empty-state h4 { margin-bottom: .6rem; }
+.empty-state p { opacity: .8; margin-bottom: 1.5rem; }
+
+.pending-card { max-width: 640px; margin-inline: auto; }
+.pending-icon-wrap {
+  width: 64px; height: 64px; border-radius: 50%;
+  background: rgba(217,119,6,.12); color: #b45309;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.7rem; margin: 0 auto;
+}
+[data-theme="dark"] .pending-icon-wrap { background: rgba(245,158,11,.18); color: #fbbf24; }
+.pending-text { opacity: 1; color: var(--text-muted); font-size: .98rem; line-height: 1.7; max-width: 480px; margin-inline: auto; }
+
+.invite-row { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
+
+.triage-filter-row { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
+.triage-filter-btn {
+  display: inline-flex; align-items: center; gap: .4rem;
+  background: transparent; border: 1px solid rgba(131,151,145,.5);
+  color: inherit; padding: .35rem .9rem; border-radius: 999px;
+  cursor: pointer; font-size: .85rem; font-weight: 600; transition: all .15s ease;
+}
+.triage-filter-btn:hover { background: rgba(131,151,145,.14); }
+.triage-filter-btn.active { background: #b91c1c; border-color: #b91c1c; color: #fff; }
+.triage-hint { font-size: .8rem; opacity: .8; }
+.invite-code-chip {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 1.5rem; font-weight: 700; letter-spacing: .35em;
+  padding: .45rem 1rem; border-radius: 12px;
+  background: rgba(131,151,145,.12); border: 1px dashed rgba(131,151,145,.45);
+}
+
+.chart-container-trend { position: relative; height: 300px; width: 100%; }
+
+.table-wrap { overflow-x: auto; }
+.history-table { width: 100%; border-collapse: collapse; }
+.history-table th, .history-table td { text-align: start; padding: .65rem .75rem; border-bottom: 1px solid rgba(131,151,145,.18); font-size: .95rem; }
+.history-table th { font-weight: 700; opacity: .8; font-size: .82rem; text-transform: uppercase; letter-spacing: .3px; }
+.muted-row { color: #6b7280; font-style: italic; text-align: center; padding: 1rem 0 !important; }
+.history-caption { margin-top: .75rem; font-size: .85rem; opacity: .75; text-align: center; }
+
+.crisis-banner {
+  margin-bottom: 1.25rem;
+  padding: .9rem 1.1rem;
+  border-radius: 12px;
+  background: #fee2e2;
+  color: #7f1d1d;
+  border-inline-start: 4px solid #b91c1c;
+  display: flex; flex-wrap: wrap; align-items: center; gap: .6rem;
+}
+.crisis-banner i { font-size: 1.25rem; }
+[data-theme="dark"] .crisis-banner { background: rgba(185,28,28,.22); color: #fecaca; }
+
+.crisis-chip {
+  display: inline-flex; align-items: center; gap: .35rem;
+  background: #b91c1c; color: #fff; padding: .18rem .55rem; border-radius: 999px;
+  font-size: .75rem; font-weight: 700;
+}
+
+.sev-badge { display: inline-block; padding: .22rem .65rem; border-radius: 999px; font-size: .78rem; font-weight: 600; }
+.sev-minimal            { background: #d1fae5; color: #065f46; }
+.sev-mild               { background: #fef3c7; color: #92400e; }
+.sev-moderate           { background: #fed7aa; color: #7c2d12; }
+.sev-moderately-severe  { background: #fecaca; color: #7f1d1d; }
+.sev-severe             { background: #b91c1c; color: #fff; }
+.sev-unknown            { background: #e5e7eb; color: #374151; }
+[data-theme="dark"] .sev-minimal  { background: rgba(20,184,166,.22); color: #99f6e4; }
+[data-theme="dark"] .sev-mild     { background: rgba(245,158,11,.22); color: #fde68a; }
+[data-theme="dark"] .sev-moderate { background: rgba(234,88,12,.24);  color: #fed7aa; }
+[data-theme="dark"] .sev-moderately-severe { background: rgba(220,38,38,.28);  color: #fecaca; }
+[data-theme="dark"] .sev-severe   { background: rgba(185,28,28,.7);   color: #fff; }
+[data-theme="dark"] .sev-unknown  { background: rgba(107,114,128,.35); color: #d1d5db; }
+
+/* Item-level answer chips */
+.answers-cell { max-width: 340px; }
+.answer-chips { display: inline-flex; flex-wrap: wrap; gap: .3rem; }
+.answer-chip {
+  display: inline-block; padding: .12rem .45rem; border-radius: 6px;
+  background: rgba(101,88,122,.1); border: 1px solid rgba(101,88,122,.25);
+  font-size: .74rem; font-weight: 600; white-space: nowrap;
+}
+[data-theme="dark"] .answer-chip { background: rgba(101,88,122,.28); border-color: rgba(224,217,235,.25); }
+</style>
+{% endblock %}

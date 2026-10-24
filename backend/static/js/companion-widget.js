@@ -115,7 +115,7 @@
 
     let reply = '';
     try {
-      const res = await Api.chat.companion(text, history);
+      const res = await Api.chat.companion(text, history, lang());
       reply = (res && typeof res.response === 'string') ? res.response : fallbackText();
     } catch {
       reply = fallbackText();

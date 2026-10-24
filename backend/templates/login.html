@@ -5,12 +5,14 @@
 {% block content %}
 <div class="auth-wrapper">
   <div class="glass-card auth-card">
-    <!-- Tabs: Login / Sign Up -->
+    <!-- Tabs: Login / Sign Up / Therapist -->
     <div style="display:flex;gap:0;margin-bottom:1.5rem;border-bottom:2px solid rgba(131,151,145,0.2)">
       <button id="tab-login" class="auth-tab-btn active" onclick="switchTab('login')"
         data-ur="لاگ ان" data-en="Login">لاگ ان</button>
       <button id="tab-signup" class="auth-tab-btn" onclick="switchTab('signup')"
         data-ur="اندراج" data-en="Sign Up">اندراج</button>
+      <button id="tab-therapist" class="auth-tab-btn" onclick="switchTab('therapist')"
+        data-ur="معالج اندراج" data-en="Therapist Sign Up">معالج اندراج</button>
     </div>
 
     <!-- Login form -->
@@ -57,20 +59,56 @@
         data-ur="اکاؤنٹ بنائیں" data-en="Create Account">اکاؤنٹ بنائیں</button>
     </form>
 
-    <div class="auth-divider">
-      <span data-ur="یا" data-en="or">یا</span>
+    <!-- Therapist sign up form (account starts unverified — admin must approve) -->
+    <form id="therapist-signup-form" onsubmit="submitTherapistSignup(event)" novalidate class="d-none">
+      <p class="auth-privacy-note" style="margin-top:0;margin-bottom:1rem"
+         data-ur="معالج کے طور پر اندراج کریں۔ آپ کا کھاتہ تصدیق کے لیے منتظر رہے گا — ایڈمن کی تصدیق کے بعد آپ مریضوں کو منسلک کر سکیں گے۔"
+         data-en="Register as a therapist. Your account stays pending verification — once an admin approves it, you can connect patients.">معالج کے طور پر اندراج کریں۔ آپ کا کھاتہ تصدیق کے لیے منتظر رہے گا — ایڈمن کی تصدیق کے بعد آپ مریضوں کو منسلک کر سکیں گے۔</p>
+      <div class="mb-3">
+        <label class="form-label-zs" data-ur="نام" data-en="Name">نام</label>
+        <input type="text" id="therapist-name" class="form-control-zs" maxlength="120"
+          data-ph-ur="آپ کا نام" data-ph-en="Your name" required autocomplete="name">
+      </div>
+      <div class="mb-3">
+        <label class="form-label-zs" data-ur="ای میل" data-en="Email">ای میل</label>
+        <input type="email" id="therapist-email" class="form-control-zs"
+          data-ph-ur="آپ کا ای میل" data-ph-en="Your email" required autocomplete="email">
+      </div>
+      <div class="mb-3">
+        <label class="form-label-zs" data-ur="پاس ورڈ" data-en="Password">پاس ورڈ</label>
+        <div class="password-wrap">
+          <input type="password" id="therapist-password" class="form-control-zs"
+            data-ph-ur="کم از کم ۸ حروف" data-ph-en="Min 8 characters" required autocomplete="new-password">
+          <button type="button" class="pwd-toggle" onclick="togglePassword('therapist-password', this)"
+            aria-label="Show password" title="دکھائیں / چھپائیں"><i class="fas fa-eye"></i></button>
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label-zs" data-ur="لائسنس نمبر" data-en="License number">لائسنس نمبر</label>
+        <input type="text" id="therapist-license" class="form-control-zs" maxlength="100" required
+          data-ph-ur="پیشہ وار لائسنس نمبر" data-ph-en="Professional license no." autocomplete="off">
+      </div>
+      <button type="submit" class="btn-zs-primary btn-zs-lg" style="width:100%" id="therapist-submit-btn"
+        data-ur="معالج کے طور پر اندراج کریں" data-en="Register as Therapist">معالج کے طور پر اندراج کریں</button>
+    </form>
+
+    <!-- Shared by the Login and Sign Up tabs; hidden on the Therapist tab -->
+    <div id="guest-section">
+      <div class="auth-divider">
+        <span data-ur="یا" data-en="or">یا</span>
+      </div>
+
+      <!-- Guest access -->
+      <button class="auth-guest-btn" onclick="continueAsGuest()"
+        data-ur="بطور مہمان جاری رکھیں — کوئی اکاؤنٹ نہیں" data-en="Continue as Guest — no account needed">
+        بطور مہمان جاری رکھیں — کوئی اکاؤنٹ نہیں
+      </button>
+
+      <p class="auth-privacy-note" data-ur="مہمان کے طور پر کوئی ذاتی معلومات محفوظ نہیں کی جاتی۔"
+         data-en="No personal information is stored for guest sessions.">
+        مہمان کے طور پر کوئی ذاتی معلومات محفوظ نہیں کی جاتی۔
+      </p>
     </div>
-
-    <!-- Guest access -->
-    <button class="auth-guest-btn" onclick="continueAsGuest()"
-      data-ur="بطور مہمان جاری رکھیں — کوئی اکاؤنٹ نہیں" data-en="Continue as Guest — no account needed">
-      بطور مہمان جاری رکھیں — کوئی اکاؤنٹ نہیں
-    </button>
-
-    <p class="auth-privacy-note" data-ur="مہمان کے طور پر کوئی ذاتی معلومات محفوظ نہیں کی جاتی۔"
-       data-en="No personal information is stored for guest sessions.">
-      مہمان کے طور پر کوئی ذاتی معلومات محفوظ نہیں کی جاتی۔
-    </p>
   </div>
 </div>
 
@@ -109,19 +147,27 @@ function authNextRedirect() {
 function switchTab(tab) {
   const loginForm  = document.getElementById('login-form');
   const signupForm = document.getElementById('signup-form');
+  const therapistForm = document.getElementById('therapist-signup-form');
   const tabLogin   = document.getElementById('tab-login');
   const tabSignup  = document.getElementById('tab-signup');
+  const tabTherapist = document.getElementById('tab-therapist');
 
-  if (tab === 'login') {
-    loginForm.classList.remove('d-none');
-    signupForm.classList.add('d-none');
-    tabLogin.classList.add('active');
-    tabSignup.classList.remove('active');
-  } else {
-    loginForm.classList.add('d-none');
-    signupForm.classList.remove('d-none');
-    tabLogin.classList.remove('active');
-    tabSignup.classList.add('active');
+  const show = {
+    login:     [loginForm, tabLogin],
+    signup:    [signupForm, tabSignup],
+    therapist: [therapistForm, tabTherapist],
+  };
+  [loginForm, signupForm, therapistForm].forEach(f => f && f.classList.add('d-none'));
+  [tabLogin, tabSignup, tabTherapist].forEach(t => t && t.classList.remove('active'));
+
+  const [form, tabBtn] = show[tab] || show.login;
+  form.classList.remove('d-none');
+  tabBtn.classList.add('active');
+
+  // Guests cannot become therapists - hide the guest option on that tab.
+  const guestSection = document.getElementById('guest-section');
+  if (guestSection) {
+    guestSection.classList.toggle('d-none', tab === 'therapist');
   }
 }
 
@@ -135,13 +181,20 @@ async function submitLogin(e) {
   btn.textContent = '...';
   try {
     const user = await handleLogin(email, pass);
-    // Role decides the landing page. ?next= (return-to) is honored for regular
-    // users, and for admins ONLY when it points back at an admin page — an admin
-    // must never be dropped onto the user dashboard after signing in.
+    // Role decides the landing page (server returns redirect_to per role).
+    // ?next= (return-to) is honored for regular users, and for admins ONLY
+    // when it points back at an admin page — an admin must never be dropped
+    // onto the user dashboard after signing in. Therapists always land on
+    // the therapist portal.
     const next = authNextRedirect();
-    window.location.href = user.is_admin
-      ? (next && next.startsWith('/admin') ? next : '/admin')
-      : (next || '/dashboard');
+    const role = user.redirect_to || (user.is_admin ? 'admin' : 'dashboard');
+    if (role === 'therapist') {
+      window.location.href = '/therapist';
+    } else if (role === 'admin') {
+      window.location.href = next && next.startsWith('/admin') ? next : '/admin';
+    } else {
+      window.location.href = next || '/dashboard';
+    }
   } catch (err) {
     showFlash(err.message || 'Login failed', 'error');
     btn.disabled = false;
@@ -173,6 +226,49 @@ async function submitSignup(e) {
     btn.disabled = false;
     const lang = getCurrentLang();
     btn.textContent = lang === 'ur' ? 'اکاؤنٹ بنائیں' : 'Create Account';
+  }
+}
+
+async function submitTherapistSignup(e) {
+  e.preventDefault();
+  const btn   = document.getElementById('therapist-submit-btn');
+  const lang  = getCurrentLang();
+  const payload = {
+    name:  document.getElementById('therapist-name').value.trim(),
+    email: document.getElementById('therapist-email').value.trim(),
+    password: document.getElementById('therapist-password').value,
+    license_number: document.getElementById('therapist-license').value.trim(),
+  };
+
+  if (!payload.name) {
+    showFlash(lang === 'ur' ? 'براہ کرم اپنا نام درج کریں' : 'Please enter your name', 'error');
+    return;
+  }
+  if (!payload.license_number) {
+    showFlash(lang === 'ur'
+      ? 'لائسنس نمبر درج کریں — ایڈمن اسی کی بنیاد پر تصدیق کرتے ہیں'
+      : 'License number is required — admins verify by license', 'error');
+    return;
+  }
+  if (payload.password.length < 8) {
+    showFlash(lang === 'ur' ? 'پاس ورڈ کم از کم ۸ حروف ہونا چاہیے' : 'Password must be at least 8 characters', 'error');
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = '...';
+  try {
+    await handleSignupTherapist(payload);
+    showFlash(
+      lang === 'ur'
+        ? 'کھاتہ بن گیا — ایڈمن کی تصدیق کا انتظار ہے۔'
+        : 'Account created — pending admin verification.',
+      'success'
+    );
+    window.location.href = '/therapist';
+  } catch (err) {
+    showFlash(err.message || (lang === 'ur' ? 'اندراج نہیں ہو سکا' : 'Signup failed'), 'error');
+    btn.disabled = false;
+    btn.textContent = lang === 'ur' ? 'معالج کے طور پر اندراج کریں' : 'Register as Therapist';
   }
 }
 

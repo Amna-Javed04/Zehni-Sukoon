@@ -16,9 +16,14 @@
            data-ur="آپ کی تمام جانچ کے ریکارڈ صرف آپ کے کھاتے سے منسلک ہیں۔ کوئی اور انہیں نہیں دیکھ سکتا۔"
            data-en="Every record below belongs only to your account. No one else — not even admins — sees your answers.">آپ کی تمام جانچ کے ریکارڈ صرف آپ کے کھاتے سے منسلک ہیں۔ کوئی اور انہیں نہیں دیکھ سکتا۔</p>
       </div>
-      <a href="{{ url_for('screening') }}" class="btn btn-zs-primary"
-         data-ur="نئی جانچ شروع کریں"
-         data-en="Start a new check-in">نئی جانچ شروع کریں</a>
+      <div class="d-flex gap-2 flex-wrap">
+        <button type="button" class="btn btn-zs-outline" onclick="downloadMyScreeningPdf()"
+                data-ur="ہسٹری PDF ڈاؤن لوڈ"
+                data-en="Download history PDF">ہسٹری PDF ڈاؤن لوڈ</button>
+        <a href="{{ url_for('screening') }}" class="btn btn-zs-primary"
+           data-ur="نئی جانچ شروع کریں"
+           data-en="Start a new check-in">نئی جانچ شروع کریں</a>
+      </div>
     </div>
 
     <!-- Filter bar -->
@@ -71,6 +76,95 @@
       <div class="glass-card stat-card">
         <div class="stat-value stat-value-sm" id="stat-direction">—</div>
         <div class="stat-label" data-ur="رجحان (بہتری / بدتری)" data-en="Overall trend">رجحان (بہتری / بدتری)</div>
+      </div>
+    </div>
+
+    <!-- Connect to my therapist (consent-based link) -->
+    <div class="glass-card p-4 mt-4">
+      <h4 class="mb-2" data-ur="اپنے معالج سے منسلک ہوں" data-en="Connect to my therapist">اپنے معالج سے منسلک ہوں</h4>
+
+      <!-- Not linked -->
+      <div id="therapist-unlinked">
+        <p class="tips-summary mb-3"
+           data-ur="اگر آپ کا معالج ذہنی سکون استعمال کرتا ہے تو اس کا دعوتی کوڈ درج کریں۔ منسلک ہونے سے پہلے ہم آپ کو واضح طور پر بتائیں گے کہ وہ کیا دیکھے گا۔"
+           data-en="If your therapist uses Zehni Sukoon, enter their invite code. Before connecting we will show you exactly what they will see.">اگر آپ کا معالج ذہنی سکون استعمال کرتا ہے تو اس کا دعوتی کوڈ درج کریں۔ منسلک ہونے سے پہلے ہم آپ کو واضح طور پر بتائیں گے کہ وہ کیا دیکھے گا۔</p>
+        <div class="connect-row">
+          <div class="filter-field" style="flex:1;min-width:200px">
+            <label for="connect-name" data-ur="آپ کا نام (معالج اسے دیکھے گا)" data-en="Your name (shown to your therapist)">آپ کا نام (معالج اسے دیکھے گا)</label>
+            <input type="text" id="connect-name" class="form-control-zs" maxlength="120"
+                   data-ph-ur="ظاہر نام" data-ph-en="Display name">
+          </div>
+          <div class="filter-field" style="flex:1;min-width:200px">
+            <label for="connect-code" data-ur="دعوتی کوڈ" data-en="Invite code">دعوتی کوڈ</label>
+            <input type="text" id="connect-code" class="form-control-zs" maxlength="12" autocomplete="off"
+                   placeholder="XXXXXX" style="text-transform:uppercase">
+          </div>
+          <button type="button" class="btn btn-zs-primary" onclick="startTherapistConsent()"
+                  data-ur="منسلک ہوں" data-en="Connect">منسلک ہوں</button>
+        </div>
+      </div>
+
+      <!-- Linked -->
+      <div id="therapist-linked" class="d-none">
+        <div class="linked-row">
+          <div>
+            <p class="tips-summary mb-1">
+              <i class="fas fa-user-doctor" aria-hidden="true"></i>
+              <span data-ur="منسلک معالج:" data-en="Linked therapist:">منسلک معالج:</span>
+              <span id="linked-therapist-name">—</span>
+            </p>
+            <p class="text-muted mb-0" style="font-size:.85rem">
+              <span id="linked-since"></span>
+            </p>
+          </div>
+          <button type="button" class="btn btn-zs-outline" onclick="disconnectTherapist()"
+                  data-ur="الگ کریں" data-en="Disconnect">الگ کریں</button>
+        </div>
+        <p class="muted-line mt-2"
+           data-ur="آپ جب چاہیں الگ ہو سکتے ہیں — الگ ہوتے ہی معالج کی آپ تک رسائی فوراً بند ہو جاتی ہے۔"
+           data-en="You can disconnect anytime — access ends the moment you do.">آپ جب چاہیں الگ ہو سکتے ہیں — الگ ہوتے ہی معالج کی آپ تک رسائی فوراً بند ہو جاتی ہے۔</p>
+      </div>
+    </div>
+
+    <!-- Consent screen (shown BEFORE the link is created) -->
+    <div class="consent-overlay d-none" id="consent-modal" onclick="if(event.target===this)closeConsentModal()">
+      <div class="zs-modal glass-card consent-modal" role="dialog" aria-modal="true" aria-labelledby="consent-title">
+        <h3 id="consent-title" class="zs-modal-title"
+            data-ur="رضامندی — آپ کی معلومات پر کیا دیکھے گا؟"
+            data-en="Consent — what will they see?">رضامندی — آپ کی معلومات پر کیا دیکھے گا؟</h3>
+        <p class="zs-modal-sub"
+           data-ur="آپ کے معالج کو صرف مندرجہ ذیل چیزیں نظر آئیں گی۔ ربط بنانے سے پہلے سمجھ لیں:"
+           data-en="Your therapist will see only the items listed below. Review before connecting:">آپ کے معالج کو صرف مندرجہ ذیل چیزیں نظر آئیں گی۔ ربط بنانے سے پہلے سمجھ لیں:</p>
+
+        <div class="consent-block consent-sees">
+          <h5 data-ur="معالج یہ دیکھے گا:" data-en="Your therapist WILL see:">معالج یہ دیکھے گا:</h5>
+          <ul>
+            <li data-ur="آپ کا ظاہر نام" data-en="Your display name">آپ کا ظاہر نام</li>
+            <li data-ur="عمر کی حد اور جنس" data-en="Age range and gender">عمر کی حد اور جنس</li>
+            <li data-ur="آپ کی جانچ کے سکور اور شدت" data-en="Your screening scores and severity">آپ کی جانچ کے سکور اور شدت</li>
+            <li data-ur="جانچ کے سوالوں کے جوابات (آئٹم بہ آئٹم)" data-en="Item-level answers to each screening question">جانچ کے سوالوں کے جوابات (آئٹم بہ آئٹم)</li>
+            <li data-ur="اگر کوئی بحرانی اشارہ ہو" data-en="A crisis flag, if one was recorded">اگر کوئی بحرانی اشارہ ہو</li>
+          </ul>
+        </div>
+
+        <div class="consent-block consent-notsees">
+          <h5 data-ur="معالج یہ نہیں دیکھے گا:" data-en="Your therapist will NOT see:">معالج یہ نہیں دیکھے گا:</h5>
+          <ul>
+            <li data-ur="آپ کی ہمدم (AI) سے چیٹ کی گفتگو کے ریکارڈ" data-en="Your chat conversations with Humdum (the AI companion)">آپ کی ہمدم (AI) سے چیٹ کی گفتگو کے ریکارڈ</li>
+            <li data-ur="کوئی بھی گفتگو یا میسج — وہ ہمیشہ نجی رہتی ہے" data-en="Any conversation or message — those always stay private">کوئی بھی گفتگو یا میسج — وہ ہمیشہ نجی رہتی ہے</li>
+          </ul>
+        </div>
+
+        <p class="zs-modal-sub mt-3"
+           data-ur="یہ ربط عارضی ہے: آپ جب چاہیں الگ کر سکتے ہیں اور الگ ہوتے ہی معالج کی رسائی فوراً ختم ہو جاتی ہے۔"
+           data-en="This link is reversible: you can disconnect anytime, and access ends immediately when you do.">یہ ربط عارضی ہے: آپ جب چاہیں الگ کر سکتے ہیں اور الگ ہوتے ہی معالج کی رسائی فوراً ختم ہو جاتی ہے۔</p>
+
+        <div class="consent-actions">
+          <button type="button" class="btn btn-zs-outline" style="flex:1" onclick="closeConsentModal()"
+                  data-ur="منسوخ" data-en="Cancel">منسوخ</button>
+          <button type="button" class="btn btn-zs-primary" style="flex:1" id="consent-agree-btn" onclick="confirmTherapistConsent()"
+                  data-ur="میں راضی ہوں" data-en="I agree">میں راضی ہوں</button>
+        </div>
       </div>
     </div>
 
@@ -173,11 +267,13 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!requireUser()) return;
   document.getElementById('dash-wrapper').classList.remove('d-none');
   loadDashboard();
+  loadTherapistLink();
 
   // Re-render dynamic content when the language flips.
   new MutationObserver(() => {
     if (lastOverview) renderOverview(lastOverview);
     if (lastHistory)  renderHistory(lastHistory);
+    if (lastLink)     renderTherapistLink(lastLink);
   }).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
 });
 
@@ -517,7 +613,7 @@ function pickTips(sev, situation, type, lang) {
       journal:     { icon: 'fa-pen', text: 'رات کو تین سطور میں دن کا خلاصہ لکھیں — سوچ کے نمونے واضح ہوتے ہیں۔' },
       cbt:         { icon: 'fa-brain', text: 'CBT ورک شیٹ آزمائیں: منفی خیال، اس کی تائید اور تردید، پھر متوازن خیال لکھیں۔' },
       professional:{ icon: 'fa-user-doctor', text: 'ایک مصدقہ ماہرِ نفسیات یا سائیکیاٹرسٹ سے رابطہ کریں۔ یہ طاقت کی علامت ہے۔' },
-      helpline:    { icon: 'fa-phone', text: 'ایمرجنسی: Umang — 0311-7786264 یا Rescue 1122۔' },
+      helpline:    { icon: 'fa-phone', text: 'ایمرجنسی: Umang — 0311-7786264۔' },
       talk:        { icon: 'fa-comments', text: 'کسی قریبی شخص سے بات شیئر کریں — بوجھ بانٹنے سے ہلکا ہوتا ہے۔' },
       routine:     { icon: 'fa-calendar-check', text: 'چھوٹے قابلِ تحقيق اہداف: بستر بنانا، وضو، ایک کھانا وقت پر۔' },
       companion:   { icon: 'fa-robot', text: 'ذہنی سکون کے ساتھی سے آج کی بات چیت کریں — ۲۴/۷۔' },
@@ -533,7 +629,7 @@ function pickTips(sev, situation, type, lang) {
       journal:     { icon: 'fa-pen', text: 'Write a three-line summary of the day at night; patterns surface.' },
       cbt:         { icon: 'fa-brain', text: 'Try a CBT worksheet: negative thought, evidence for/against, balanced reframe.' },
       professional:{ icon: 'fa-user-doctor', text: 'Reach out to a licensed psychologist or psychiatrist. It is a sign of strength.' },
-      helpline:    { icon: 'fa-phone', text: 'Emergency: Umang — 0311-7786264 or Rescue 1122.' },
+      helpline:    { icon: 'fa-phone', text: 'Emergency: Umang — 0311-7786264.' },
       talk:        { icon: 'fa-comments', text: 'Share how you feel with one trusted person — burdens lighten when split.' },
       routine:     { icon: 'fa-calendar-check', text: 'Set tiny achievable goals: make the bed, wudu, one meal on time.' },
       companion:   { icon: 'fa-robot', text: 'Talk to the Zehni Sukoon companion tonight — available 24/7.' },
@@ -626,10 +722,121 @@ function formatDate(iso, lang) {
   }
 }
 
+// ── Therapist link (consent-based) ────────────────────────────────────
+let lastLink = null;
+
+async function loadTherapistLink() {
+  try {
+    const data = await Api.user.getTherapistLink();
+    lastLink = data.link;
+    renderTherapistLink(data.link);
+  } catch {
+    // Link status is a passive widget — failures must not break the dashboard.
+  }
+}
+
+function renderTherapistLink(link) {
+  const unlinked = document.getElementById('therapist-unlinked');
+  const linked   = document.getElementById('therapist-linked');
+  if (!unlinked || !linked) return;
+
+  if (link) {
+    unlinked.classList.add('d-none');
+    linked.classList.remove('d-none');
+    document.getElementById('linked-therapist-name').textContent = link.therapist_name || '—';
+    const lang = getCurrentLang();
+    let since = '';
+    if (link.consented_at) {
+      try {
+        const d = new Date(link.consented_at);
+        since = isNaN(d) ? link.consented_at : d.toLocaleDateString(lang === 'ur' ? 'ur-PK' : 'en-GB', { year: 'numeric', month: 'short', day: 'numeric' });
+      } catch { since = link.consented_at; }
+    }
+    document.getElementById('linked-since').textContent = lang === 'ur'
+      ? `منسلک تاریخ: ${since}`
+      : `Connected since: ${since}`;
+  } else {
+    linked.classList.add('d-none');
+    unlinked.classList.remove('d-none');
+  }
+}
+
+let _pendingInviteCode = '';
+
+function startTherapistConsent() {
+  const lang = getCurrentLang();
+  const code = (document.getElementById('connect-code').value || '').trim().toUpperCase();
+  if (!code) {
+    showFlash(lang === 'ur' ? 'براہ کرم دعوتی کوڈ درج کریں' : 'Please enter the invite code', 'error');
+    return;
+  }
+  _pendingInviteCode = code;
+  document.getElementById('consent-modal').classList.remove('d-none');
+}
+
+function closeConsentModal() {
+  const modal = document.getElementById('consent-modal');
+  if (modal) modal.classList.add('d-none');
+}
+
+async function confirmTherapistConsent() {
+  const lang = getCurrentLang();
+  const btn = document.getElementById('consent-agree-btn');
+  btn.disabled = true;
+  try {
+    await Api.user.linkTherapist({
+      invite_code: _pendingInviteCode,
+      consent: true,
+      display_name: (document.getElementById('connect-name').value || '').trim(),
+    });
+    closeConsentModal();
+    showFlash(lang === 'ur' ? 'آپ اپنے معالج سے منسلک ہو گئے ہیں۔' : 'You are connected to your therapist.', 'success');
+    await loadTherapistLink();
+  } catch (err) {
+    showFlash(err.message || (lang === 'ur' ? 'منسلک نہیں ہو سکا' : 'Could not connect'), 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function disconnectTherapist() {
+  const lang = getCurrentLang();
+  const msg = lang === 'ur'
+    ? 'کیا آپ واقعی اپنے معالج سے الگ ہونا چاہتے ہیں؟ ان کی آپ تک رسائی فوراً بند ہو جائے گی۔'
+    : 'Really disconnect from your therapist? Their access to your data ends immediately.';
+  if (!confirm(msg)) return;
+  try {
+    await Api.user.unlinkTherapist();
+    showFlash(lang === 'ur' ? 'رابطہ ختم کر دیا گیا ہے۔' : 'Connection removed.', 'success');
+    await loadTherapistLink();
+  } catch (err) {
+    showFlash(err.message || (lang === 'ur' ? 'ختم نہیں ہو سکا' : 'Could not disconnect'), 'error');
+  }
+}
+
+// ── PDF export of this patient's own screening history ────────────────
+async function downloadMyScreeningPdf() {
+  const lang = getCurrentLang();
+  try {
+    const blob = await Api.screening.exportPdf();
+    downloadBlob(blob, `zehni-sukoon-screenings-${new Date().toISOString().slice(0, 10)}.pdf`);
+    showFlash(lang === 'ur'
+      ? 'آپ کی اسکریننگ ہسٹری PDF ڈاؤن لوڈ ہو گئی۔'
+      : 'Your screening history PDF has been downloaded.', 'success');
+  } catch (err) {
+    showFlash(err.message || (lang === 'ur' ? 'PDF ڈاؤن لوڈ نہیں ہو سکی' : 'Could not download the PDF'), 'error');
+  }
+}
+
 // Expose to inline onclick handlers
 window.loadDashboard = loadDashboard;
+window.downloadMyScreeningPdf = downloadMyScreeningPdf;
 window.resetFilters  = resetFilters;
 window.setFilterType = setFilterType;
+window.startTherapistConsent = startTherapistConsent;
+window.closeConsentModal     = closeConsentModal;
+window.confirmTherapistConsent = confirmTherapistConsent;
+window.disconnectTherapist   = disconnectTherapist;
 </script>
 
 <style>
@@ -726,5 +933,27 @@ window.setFilterType = setFilterType;
 [data-theme="dark"] .sev-moderately-severe { background: rgba(220,38,38,.28); color: #fecaca; }
 [data-theme="dark"] .sev-severe   { background: rgba(185,28,28,.7);   color: #fff; }
 [data-theme="dark"] .sev-unknown  { background: rgba(107,114,128,.35); color: #d1d5db; }
+
+/* Connect-to-therapist card + consent modal */
+.connect-row { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
+.linked-row { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.linked-row i { color: #4e635e; margin-inline-end: .4rem; }
+[data-theme="dark"] .linked-row i { color: #839791; }
+
+.consent-overlay {
+  position: fixed; inset: 0; background: rgba(20,25,24,.55); backdrop-filter: blur(2px);
+  display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1rem;
+}
+.consent-modal { max-width: 520px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 1.5rem; border-radius: var(--radius-sm); }
+.zs-modal-title { margin: 0 0 .35rem; font-size: 1.15rem; }
+.zs-modal-sub { margin: 0 0 1rem; font-size: .88rem; opacity: .85; line-height: 1.55; }
+.consent-block { padding: .8rem 1rem; border-radius: 12px; margin-bottom: .8rem; }
+.consent-block h5 { margin: 0 0 .4rem; font-size: .95rem; }
+.consent-block ul { margin: 0; padding-inline-start: 1.2rem; font-size: .9rem; line-height: 1.7; }
+.consent-sees    { background: rgba(78,99,94,.08); border-inline-start: 4px solid #4e635e; }
+.consent-notsees { background: rgba(185,28,28,.07); border-inline-start: 4px solid #b91c1c; }
+[data-theme="dark"] .consent-sees    { background: rgba(78,99,94,.2); }
+[data-theme="dark"] .consent-notsees { background: rgba(185,28,28,.18); }
+.consent-actions { display: flex; gap: .6rem; margin-top: 1rem; }
 </style>
 {% endblock %}

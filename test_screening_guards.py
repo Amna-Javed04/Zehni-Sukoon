@@ -22,6 +22,10 @@ from backend.app import create_app  # noqa: E402
 app = create_app()
 FAILURES = []
 
+# The daily chat-turn budget is enforced by the same route these tests drive;
+# clear it so a guard scenario can never be masked by the cap.
+chat._DAILY_TURN_LEDGER.clear()
+
 
 def check(name, cond, detail=""):
     status = "PASS" if cond else "FAIL"
@@ -32,6 +36,7 @@ def check(name, cond, detail=""):
 
 def call(parsed, **payload):
     """Run one turn with the model's reply forced to `parsed`."""
+    chat._DAILY_TURN_LEDGER.clear()  # every scenario starts with a fresh budget
     chat._call_llm = lambda *a, **k: json.dumps(parsed)
     body = {
         "assessment_type": "phq9",
@@ -128,7 +133,7 @@ code, d = call({
 }, transcript=CRISIS_TRANSCRIPT)
 check("crisis echoed", d.get("crisis") is True)
 check("q9 raised to >= 1", d["coverage"]["q9"]["score"] >= 1, d["coverage"]["q9"])
-check("crisis contacts present", len(d.get("crisis_contacts", [])) == 3)
+check("crisis contacts present (Umang only)", len(d.get("crisis_contacts", [])) == 1)
 
 print("\n6b. The model flagging crisis off its own question must not fire")
 code, d = call({
@@ -151,7 +156,7 @@ code, d = call({
     {"role": "user", "content": "kabhi lagta hai mar jana behtar hota, khud ko nuqsan pohanchane ka khayal aata hai"},
 ])
 check("local crisis caught", d.get("crisis") is True)
-check("helpline card offered", len(d.get("crisis_contacts", [])) == 3)
+check("helpline card offered (Umang only)", len(d.get("crisis_contacts", [])) == 1)
 check("q9 not filled in silently", "q9" not in d.get("coverage", {}), d.get("coverage").get("q9"))
 check("q9 still gets asked", "q9" in d.get("unanswered", []), d.get("unanswered"))
 check("screening not cut short", d.get("complete") is False)

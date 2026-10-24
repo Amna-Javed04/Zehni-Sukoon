@@ -65,6 +65,35 @@
       </div>
     </div>
 
+    <!-- ─── Pending therapists ─────────────────────────────────── -->
+    <div class="glass-card p-4 mb-4">
+      <div class="users-header">
+        <div>
+          <h4 class="mb-1" data-ur="انتظار میں والے معالج" data-en="Pending Therapists">انتظار میں والے معالج</h4>
+          <p class="muted-line"
+             data-ur="یہ وہ معالج ہیں جن کا اندراج ایڈمن کی تصدیق کا انتظار کر رہا ہے۔ لائسنس نمبر چیک کر کے تصدیق کریں۔ صرف کھاتے کا میٹا ڈیٹا — کوئی مریض ڈیٹا کبھی نہیں۔"
+             data-en="Therapists awaiting approval. Check the license number, then Verify or Reject. Account metadata only — no patient data is ever shown here.">یہ وہ معالج ہیں جن کا اندراج ایڈمن کی تصدیق کا انتظار کر رہا ہے۔ لائسنس نمبر چیک کر کے تصدیق کریں۔ صرف کھاتے کا میٹا ڈیٹا — کوئی مریض ڈیٹا کبھی نہیں۔</p>
+        </div>
+        <button type="button" class="btn btn-zs-outline btn-sm" onclick="loadTherapists()"
+                data-ur="ریفریش" data-en="Refresh">ریفریش</button>
+      </div>
+      <div class="table-wrap">
+        <table class="users-table">
+          <thead>
+            <tr>
+              <th data-ur="نام" data-en="Name">نام</th>
+              <th data-ur="ای میل" data-en="Email">ای میل</th>
+              <th data-ur="لائسنس نمبر" data-en="License no.">لائسنس نمبر</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="therapists-body">
+            <tr><td colspan="4" class="muted-row" data-ur="لوڈ ہو رہا ہے…" data-en="Loading…">لوڈ ہو رہا ہے…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p id="therapists-caption" class="history-caption"></p>
+    </div>
     <!-- 7-Day Trend (Full Width) -->
     <div class="glass-card p-4 mb-4">
       <h4 class="mb-3 text-center" data-ur="گذشتہ ۷ دنوں کا رجحان (روزانہ چیک ان)" data-en="7-Day Check-in Trend (Daily Volume)">گذشتہ ۷ دنوں کا رجحان (روزانہ چیک ان)</h4>
@@ -165,6 +194,7 @@
       <p id="users-caption" class="history-caption"></p>
     </div>
 
+
   </div>
 </div>
 {% endblock %}
@@ -189,6 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initial load
   loadAdminStats();
   loadUsers();
+  loadTherapists();
 
   // Re-render dynamic rows when language changes (users list)
   new MutationObserver(() => {
@@ -511,12 +542,106 @@ async function deleteUserById(id, email) {
   }
 }
 
+// ── Therapist verification (account metadata only — never patient data) ──
+let lastTherapists = null;
+
+async function loadTherapists() {
+  try {
+    const data = await Api.admin.therapists({ status: 'pending' });
+    lastTherapists = data;
+    renderTherapists(data.therapists);
+    applyLanguage(getCurrentLang());
+  } catch (err) {
+    showFlash(err.message || (getCurrentLang() === 'ur' ? 'معالج فہرست لوڈ نہیں ہوئی' : 'Failed to load therapists'), 'error');
+  }
+}
+
+function renderTherapists(therapists) {
+  const tbody = document.getElementById('therapists-body');
+  const caption = document.getElementById('therapists-caption');
+  tbody.innerHTML = '';
+  const lang = getCurrentLang();
+
+  if (!therapists || therapists.length === 0) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = 4;
+    td.className = 'muted-row';
+    td.textContent = lang === 'ur' ? 'کوئی اندراج تصدیق کے منتظر نہیں۔' : 'No therapists pending approval.';
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+    if (caption) caption.textContent = '';
+    return;
+  }
+
+  for (const t of therapists) {
+    const tr = document.createElement('tr');
+    tr.appendChild(_td(t.name || '—'));
+    tr.appendChild(_td(t.email || '—'));
+    tr.appendChild(_td(t.license_number || '—'));
+
+    const actTd = document.createElement('td');
+    actTd.innerHTML = `
+      <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+        <button type="button" class="btn-verify-therapist" onclick="verifyTherapistById(${t.id}, '${_jsStr(t.email)}')">
+          <i class="fas fa-check" aria-hidden="true"></i>
+          <span>${lang === 'ur' ? 'تصدیق کریں' : 'Verify'}</span>
+        </button>
+        <button type="button" class="btn-delete-user" onclick="rejectTherapistById(${t.id}, '${_jsStr(t.email)}')">
+          <i class="fas fa-xmark" aria-hidden="true"></i>
+          <span>${lang === 'ur' ? 'مسترد کریں' : 'Reject'}</span>
+        </button>
+      </div>`;
+    tr.appendChild(actTd);
+    tbody.appendChild(tr);
+  }
+
+  if (caption) {
+    caption.textContent = lang === 'ur'
+      ? `${therapists.length} اندراج تصدیق کے منتظر ہیں۔`
+      : `${therapists.length} registration${therapists.length === 1 ? '' : 's'} pending approval.`;
+  }
+}
+
+async function verifyTherapistById(id, email) {
+  const lang = getCurrentLang();
+  const msg = lang === 'ur'
+    ? `کیا آپ ${email} کو مصدقہ معالج کے طور پر تصدیق کرنا چاہتے ہیں؟`
+    : `Verify ${email} as a therapist?`;
+  if (!confirm(msg)) return;
+  try {
+    await Api.admin.verifyTherapist(id);
+    showFlash(lang === 'ur' ? 'معالج تصدیق شدہ ہے۔' : 'Therapist verified.', 'success');
+    loadTherapists();
+  } catch (err) {
+    showFlash(err.message || (lang === 'ur' ? 'تصدیق نہیں ہو سکی' : 'Could not verify'), 'error');
+  }
+}
+
+async function rejectTherapistById(id, email) {
+  const lang = getCurrentLang();
+  const msg = lang === 'ur'
+    ? `کیا آپ ${email} کا اندراج مسترد کرنا چاہتے ہیں؟ کھاتہ حذف کر دیا جائے گا۔`
+    : `Reject ${email}'s application? The account will be removed.`;
+  if (!confirm(msg)) return;
+  try {
+    await Api.admin.rejectTherapist(id);
+    showFlash(lang === 'ur' ? 'اندراج مسترد کر دیا گیا۔' : 'Application rejected.', 'success');
+    loadTherapists();
+  } catch (err) {
+    showFlash(err.message || (lang === 'ur' ? 'مسترد نہیں ہو سکا' : 'Could not reject'), 'error');
+  }
+}
+
 window.resetAdminFilters = resetAdminFilters;
 window.setAdminType = setAdminType;
 window.debouncedLoadUsers = debouncedLoadUsers;
 window.loadUsers = loadUsers;
 window.submitAddUser = submitAddUser;
 window.deleteUserById = deleteUserById;
+window.loadTherapists = loadTherapists;
+window.verifyTherapistById = verifyTherapistById;
+window.rejectTherapistById = rejectTherapistById;
 </script>
 
 <style>
@@ -589,7 +714,7 @@ window.deleteUserById = deleteUserById;
 
 /* ── User management ───────────────────────────────────────────────── */
 .users-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; }
-.muted-line { opacity: .78; font-size: .9rem; margin: 0; }
+.muted-line { opacity: .95; font-size: .9rem; margin: 0; }
 
 .user-add-form,
 .users-toolbar {
@@ -617,8 +742,20 @@ window.deleteUserById = deleteUserById;
 }
 .role-chip.role-admin { background: #ede9fe; color: #5b21b6; }
 .role-chip.role-user  { background: #d1fae5; color: #065f46; }
+.role-chip.role-pending { background: #fef3c7; color: #92400e; }
 [data-theme="dark"] .role-chip.role-admin { background: rgba(139,92,246,.25); color: #ddd6fe; }
 [data-theme="dark"] .role-chip.role-user  { background: rgba(20,184,166,.25); color: #99f6e4; }
+[data-theme="dark"] .role-chip.role-pending { background: rgba(245,158,11,.25); color: #fde68a; }
+
+.btn-verify-therapist {
+  display: inline-flex; align-items: center; gap: .35rem;
+  background: transparent; color: #065f46; border: 1px solid rgba(6,95,70,.4);
+  padding: .3rem .65rem; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600;
+  transition: background .15s ease, color .15s ease;
+}
+.btn-verify-therapist:hover { background: #065f46; color: #fff; border-color: #065f46; }
+[data-theme="dark"] .btn-verify-therapist { color: #6ee7b7; border-color: rgba(110,231,183,.4); }
+[data-theme="dark"] .btn-verify-therapist:hover { background: #065f46; color: #fff; }
 
 .btn-delete-user {
   display: inline-flex; align-items: center; gap: .35rem;
