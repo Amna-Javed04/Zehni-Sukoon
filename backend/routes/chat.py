@@ -131,7 +131,10 @@ CLARIFY_SNAP_SCORE = 1  # "several days" - never 0, which would erase the sympto
 # roughly 15-20 minutes later - a long rolling penalty, not a dead integration
 # and not a fixed daily cap either. Either way, past this hint we stop making
 # the person wait and offer the written form instead.
-TRANSIENT_RETRY_CEILING_SECONDS = 20
+# The ceiling covers Groq's output-token (OTPM) hints too: they say "try again
+# in ~21s" and genuinely clear within that rolling minute, so a turn that
+# trips one is worth a single quiet retry, not an instant written-form handoff.
+TRANSIENT_RETRY_CEILING_SECONDS = 25
 
 # A crisis signal must never be lost to an outage or a rate limit, so detection
 # does not depend on the LLM alone. Phrases are deliberately multi-word: Roman
@@ -183,7 +186,7 @@ def _item_lookup(assessment_type):
     return {item['key']: item for item in spec}
 
 
-def _call_llm(messages, json_mode=False, timeout=None):
+def _call_llm(messages, json_mode=False, timeout=None, max_tokens=None):
     """
     THE single LLM seam for this module (existing tests patch this name).
 
@@ -191,9 +194,16 @@ def _call_llm(messages, json_mode=False, timeout=None):
     between configured providers (429 -> next provider, timeout/5xx -> one
     quick retry then next provider). Raises llm_client.LLMError when every
     provider has failed; the callers below decide how to degrade.
+
+    Callers pass a realistic max_tokens cap: Groq's free tier reserves
+    max_tokens from a 1,000 output-tokens/min budget per request, so an
+    uncapped call that blips (the model rambles prose to the full cap and
+    fails json validation) leaves no room for its own retry - the retry 429s
+    and a recoverable blip turns into a dead turn.
     """
     result = llm_client.chat_completion(messages, json_mode=json_mode,
-                                        timeout=timeout)
+                                        timeout=timeout,
+                                        max_tokens=max_tokens)
     return result['content']
 
 
@@ -218,7 +228,8 @@ def _classify_llm_failure(exc):
     if status is not None and 400 <= status < 500 and status != 429:
         return 'config', None
     body = getattr(response, 'text', '') or ''
-    match = re.search(r'retry in\s+(\d+(?:\.\d+)?)s', body)
+    match = (re.search(r'retry in\s+(\d+(?:\.\d+)?)s', body)
+             or re.search(r'try again in\s+(\d+(?:\.\d+)?)s', body))
     if match:
         delay = float(match.group(1))
         if delay > TRANSIENT_RETRY_CEILING_SECONDS:
@@ -696,10 +707,13 @@ def extract_score():
     user_content = f"Question: {question}\nUser Reply: {reply}"
 
     try:
+        # Score extraction replies are tiny (score + a one-line rationale);
+        # 200 tokens keeps the OTPM reservation small so the companion and
+        # screening turns sharing the same minute are not starved.
         content = _call_llm([
             {'role': 'system', 'content': system_prompt},
             {'role': 'user', 'content': user_content},
-        ], json_mode=True, timeout=10)
+        ], json_mode=True, timeout=10, max_tokens=200)
 
         # Parse JSON from response
         parsed = json.loads(content)
@@ -856,7 +870,12 @@ def screening_turn():
     parsed = None
     failure_reason = 'llm_error'
     try:
-        content = _call_llm(messages, json_mode=True)
+        # 400 tokens comfortably fits a screening turn's JSON (reply +
+        # coverage + clarifications; measured real replies are 15-60 tokens,
+        # worst-case Urdu Nastaliq a few times that) while guaranteeing that
+        # a full-length JSON blip (~400) plus its retry (~400) still fit in
+        # Groq's 1,000 OTPM free-tier budget instead of self-inflicting 429.
+        content = _call_llm(messages, json_mode=True, max_tokens=400)
         candidate = _extract_json_object(content)
         if not isinstance(candidate, dict):
             raise ValueError('model returned a non-object')
@@ -1040,7 +1059,10 @@ def companion():
         messages.append({'role': 'user', 'content': message})
 
     try:
-        result = llm_client.chat_completion(messages, timeout=10)
+        # 400 tokens (~300 words) is a generous supportive reply and keeps
+        # the OTPM reservation low enough that a rapid back-and-forth does
+        # not rate-limit itself against Groq's 1,000 output-tokens/min.
+        result = llm_client.chat_completion(messages, timeout=10, max_tokens=400)
         return jsonify({'response': result['content']}), 200
 
     except Exception as e:

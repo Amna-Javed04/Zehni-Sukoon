@@ -9,14 +9,18 @@ Every HTTP call is mocked - no network, no quota, no keys needed. They cover:
   4. timeouts get at most one quick same-provider retry, then fail over
   5. a 400 that looks extras-related retries once WITHOUT the extras;
      a server-side json_validate_failed 400 (prose instead of JSON) is
-     retried as-is, while a plain config 400 still fails over at once
+     salvaged when the rejected generation still held JSON, else retried
+     with a JSON-only reminder appended, while a plain config 400 fails
+     over at once
   6. all providers failing raises LLMError with a per-provider trail
   7. request payload shape (thinking off, JSON mode, max_tokens)
   8. logging carries provider/model/latency/tokens, never message content
   9. route level: the crisis floor survives ALL providers failing
- 10. route level: honest degradation (form offered) when all providers fail
- 11. route level: daily turn cap + crisis bypass of the cap
- 12. no provider configured at all -> llm_unavailable / local heuristic
+ 10. route level: honest degradation (form offered) when all providers fail11. route level: daily turn cap + crisis bypass of the cap
+12. no provider configured at all -> llm_unavailable / local heuristic
+13. every route caps max_tokens (Groq OTPM reservation: a JSON blip must
+    not consume the output-token budget its own retry needs) and Groq's
+    "try again in ~21s" OTPM hint classifies as transient, not exhausted
 """
 import contextlib
 import json
@@ -198,7 +202,7 @@ with llm_env(LLM_PROVIDERS="qwen",
 
 # ── 5b. Server-side JSON validation blip -> one as-is retry ───────────
 print("=" * 74)
-print("5b. A json_validate_failed 400 is retried as-is on the same provider")
+print("5b. A json_validate_failed 400 is salvaged or retried with a nudge")
 
 _GROQ_JSON_BLIP = {'n': 0}
 
@@ -223,17 +227,73 @@ with llm_env(LLM_PROVIDERS="groq",
         unittest.mock.patch.object(llm.requests, 'post', side_effect=fake_post):
     result = llm.chat_completion([{'role': 'user', 'content': 'hello'}])
     check("recovered after the JSON blip", result['provider'] == 'groq')
-    check("retried the same request as-is (exactly two calls)",
+    check("retried the same provider (exactly two calls)",
           len(calls) == 2, len(calls))
-    check("payload unchanged between attempts",
-          calls[0]['payload'] == calls[1]['payload'])
+    first, retry = calls[0]['payload'], calls[1]['payload']
+    check("retry differs only by an appended JSON-only nudge",
+          retry['messages'][:-1] == first['messages']
+          and retry['messages'][-1]['role'] == 'system'
+          and 'ONLY' in retry['messages'][-1]['content']
+          and {k: v for k, v in retry.items() if k != 'messages'} ==
+              {k: v for k, v in first.items() if k != 'messages'},
+          retry)
+
+# Two consecutive blips must still recover - blips have their own budget.
+_DOUBLE = {'n': 0}
+
+
+def groq_double_blip(payload):
+    _DOUBLE['n'] += 1
+    if _DOUBLE['n'] <= 2:
+        return FakeResponse(400, {}, text=json.dumps({
+            'error': {'message': 'Failed to generate JSON.',
+                      'code': 'json_validate_failed',
+                      'failed_generation': 'plain prose again'},
+        }))
+    return ok_response('{"reply": "third attempt lands"}')
+
+
+fake_post, calls = route_table([('https://groq.example', groq_double_blip)])
+with llm_env(LLM_PROVIDERS="groq",
+             GROQ_API_KEY='g-key', GROQ_BASE_URL='https://groq.example/v1',
+             GROQ_MODEL='m'), \
+        unittest.mock.patch.object(llm.requests, 'post', side_effect=fake_post):
+    result = llm.chat_completion([{'role': 'user', 'content': 'hello'}])
+    check("two consecutive JSON blips recover on the 3rd attempt",
+          result['provider'] == 'groq' and len(calls) == 3, len(calls))
+
+# A blip whose rejected generation chatted a lead-in BEFORE its JSON is
+# salvaged: that object is exactly what the caller's tolerant parser would
+# have accepted, so the turn is good without spending a retry.
+_SALVAGE_BODY = json.dumps({
+    'error': {
+        'message': 'Failed to generate JSON. Please adjust your prompt.',
+        'type': 'invalid_request_error',
+        'code': 'json_validate_failed',
+        'failed_generation': ('That sounds really tough.\n'
+                              '{"reply": "I am here with you.", '
+                              '"target_item": null}'),
+    },
+})
+fake_post, calls = route_table([
+    ('https://groq.example', lambda p: FakeResponse(400, {}, text=_SALVAGE_BODY))])
+with llm_env(LLM_PROVIDERS="groq",
+             GROQ_API_KEY='g-key', GROQ_BASE_URL='https://groq.example/v1',
+             GROQ_MODEL='m'), \
+        unittest.mock.patch.object(llm.requests, 'post', side_effect=fake_post):
+    result = llm.chat_completion([{'role': 'user', 'content': 'hello'}],
+                                 json_mode=True)
+    check("prose+JSON blip salvaged without any retry",
+          len(calls) == 1 and result['provider'] == 'groq'
+          and 'I am here with you' in result['content'], result)
 
 fake_post, calls = route_table([
     ('https://groq.example', lambda p: error_response(400, 'malformed request')),
     ('https://gemini.example', lambda p: ok_response('{"reply": "gemini"}')),
 ])
 with llm_env(LLM_PROVIDERS="groq,gemini",
-             GROQ_API_KEY='g-key', GROQ_BASE_URL='https://groq.example/v1', GROQ_MODEL='m',
+             GROQ_API_KEY='g-key', GROQ_BASE_URL='https://groq.example/v1',
+             GROQ_MODEL='openai/gpt-oss-120b',
              GEMINI_API_KEY='g2-key', GEMINI_BASE_URL='https://gemini.example/v1',
              GEMINI_MODEL='m'), \
         unittest.mock.patch.object(llm.requests, 'post', side_effect=fake_post):
@@ -284,23 +344,47 @@ with llm_env(LLM_PROVIDERS="gemini",
     check("gemini thinking disabled via reasoning_effort",
           payload.get('reasoning_effort') == 'none', payload)
     check("max_tokens bounded", payload.get('max_tokens') == 321)
+    check("json mode asks for low temperature (compliance, not creativity)",
+          payload.get('temperature') == 0.3, payload)
     check("model from env", payload.get('model') == 'gemini-test')
     check("no qwen-style extra on gemini", 'enable_thinking' not in payload)
 
-# Groq: reasoning effort is env-configurable and defaults to low.
+# Non-JSON calls (the companion chat) keep the provider's default warmth.
+fake_post, calls = route_table([('https://gemini.example',
+                                 lambda p: ok_response('I am here.'))])
+with llm_env(LLM_PROVIDERS="gemini",
+             GEMINI_API_KEY='g-key', GEMINI_BASE_URL='https://gemini.example/v1',
+             GEMINI_MODEL='gemini-test'), \
+        unittest.mock.patch.object(llm.requests, 'post', side_effect=fake_post):
+    llm.chat_completion([{'role': 'user', 'content': 'hi'}])
+    check("no temperature override on non-JSON calls",
+          'temperature' not in calls[0]['payload'], calls[0]['payload'])
+
+# Groq: reasoning effort is env-configurable, defaults to low, and is only
+# sent where Groq documents support for it (GPT-OSS models).
 fake_post, calls = route_table([('https://groq.example',
                                  lambda p: ok_response('{}'))])
 with llm_env(LLM_PROVIDERS="groq",
              GROQ_API_KEY='g-key', GROQ_BASE_URL='https://groq.example/v1',
-             GROQ_MODEL='groq-test'), \
+             GROQ_MODEL='openai/gpt-oss-120b'), \
         unittest.mock.patch.object(llm.requests, 'post', side_effect=fake_post):
     llm.chat_completion([{'role': 'user', 'content': 'hi'}])
     check("groq reasoning effort defaults to low",
           calls[0]['payload'].get('reasoning_effort') == 'low', calls[0]['payload'])
 
+# Non-gpt-oss Groq models must NOT receive the field (docs + our A/B: sending
+# it to qwen measurably hurt json_object compliance).
 with llm_env(LLM_PROVIDERS="groq",
              GROQ_API_KEY='g-key', GROQ_BASE_URL='https://groq.example/v1',
-             GROQ_MODEL='groq-test', GROQ_REASONING_EFFORT='high'), \
+             GROQ_MODEL='qwen/qwen3.8-27b'), \
+        unittest.mock.patch.object(llm.requests, 'post', side_effect=fake_post):
+    llm.chat_completion([{'role': 'user', 'content': 'hi'}])
+    check("qwen on groq gets NO reasoning_effort (json reliability)",
+          'reasoning_effort' not in calls[-1]['payload'], calls[-1]['payload'])
+
+with llm_env(LLM_PROVIDERS="groq",
+             GROQ_API_KEY='g-key', GROQ_BASE_URL='https://groq.example/v1',
+             GROQ_MODEL='openai/gpt-oss-120b', GROQ_REASONING_EFFORT='high'), \
         unittest.mock.patch.object(llm.requests, 'post', side_effect=fake_post):
     llm.chat_completion([{'role': 'user', 'content': 'hi'}])
     check("groq reasoning effort honours env override",
@@ -308,7 +392,7 @@ with llm_env(LLM_PROVIDERS="groq",
 
 with llm_env(LLM_PROVIDERS="groq",
              GROQ_API_KEY='g-key', GROQ_BASE_URL='https://groq.example/v1',
-             GROQ_MODEL='groq-test', GROQ_REASONING_EFFORT='off'), \
+             GROQ_MODEL='openai/gpt-oss-120b', GROQ_REASONING_EFFORT='off'), \
         unittest.mock.patch.object(llm.requests, 'post', side_effect=fake_post):
     llm.chat_completion([{'role': 'user', 'content': 'hi'}])
     check("groq reasoning effort omitted when set to off",
@@ -323,7 +407,7 @@ def groq_400_on_effort(payload):
 fake_post, calls = route_table([('https://groq.example', groq_400_on_effort)])
 with llm_env(LLM_PROVIDERS="groq",
              GROQ_API_KEY='g-key', GROQ_BASE_URL='https://groq.example/v1',
-             GROQ_MODEL='groq-test'), \
+             GROQ_MODEL='openai/gpt-oss-120b'), \
         unittest.mock.patch.object(llm.requests, 'post', side_effect=fake_post):
     result = llm.chat_completion([{'role': 'user', 'content': 'hi'}])
     check("groq rejecting the effort field recovers without extras",
@@ -454,6 +538,75 @@ with llm_env():
 check("screening-turn: llm_unavailable", t.get('reason') == 'llm_unavailable', t)
 check("extract-score: local fallback used", 'local fallback' in (e.get('reasoning') or ''),
       e)
+
+# ── 13. OTPM output-token caps + retry-hint classification ────────────
+# Groq's free tier reserves max_tokens from a 1,000 output-tokens/min budget
+# per request. A JSON blip rambles prose to the FULL cap, so an uncapped
+# (700) blip leaves no OTPM room for its own as-is retry - the retry 429s
+# and a recoverable blip becomes a dead turn. These checks pin the caps that
+# keep blip+retry inside the window.
+print("=" * 74)
+print("13. Route OTPM caps: screening 400, extraction 200, companion 400")
+
+GOOD_SCORE = json.dumps({"score": 1, "reasoning": "occasionally", "needs_clarification": False})
+env_qwen = {'LLM_PROVIDERS': 'qwen', 'QWEN_API_KEY': 'k',
+            'QWEN_BASE_URL': 'https://qwen.example/v1', 'QWEN_MODEL': 'm'}
+
+chat._DAILY_TURN_LEDGER.clear()
+fake_post, calls = route_table([('https://qwen.example',
+                                 lambda p: ok_response(GOOD_TURN))])
+with llm_env(**env_qwen), \
+        unittest.mock.patch.object(llm.requests, 'post', side_effect=fake_post):
+    with app.test_client() as c:
+        r = c.post('/api/chat/screening-turn', json={
+            'assessment_type': 'phq9', 'language': 'en',
+            'transcript': [{'role': 'user', 'content': 'I sleep badly'}]})
+check("screening turn ok", r.get_json().get('ok') is True, r.get_json())
+check("screening turn reserves <= 400 output tokens",
+      calls[0]['payload'].get('max_tokens') == 400, calls[0]['payload'])
+check("screening turn keeps json mode",
+      calls[0]['payload'].get('response_format') == {'type': 'json_object'})
+
+fake_post, calls = route_table([('https://qwen.example',
+                                 lambda p: ok_response(GOOD_SCORE))])
+with llm_env(**env_qwen), \
+        unittest.mock.patch.object(llm.requests, 'post', side_effect=fake_post):
+    with app.test_client() as c:
+        e = c.post('/api/chat/extract-score', json={
+            'assessment_type': 'phq9', 'question': 'Little interest?',
+            'reply': 'kabhi kabhi'}).get_json()
+check("extract-score scored by the LLM", e.get('score') == 1, e)
+check("extract-score reserves <= 200 output tokens",
+      calls[0]['payload'].get('max_tokens') == 200, calls[0]['payload'])
+
+fake_post, calls = route_table([('https://qwen.example',
+                                 lambda p: ok_response('I am here with you.'))])
+with llm_env(**env_qwen), \
+        unittest.mock.patch.object(llm.requests, 'post', side_effect=fake_post):
+    with app.test_client() as c:
+        comp = c.post('/api/chat/companion', json={
+            'message': 'hello', 'history': []}).get_json()
+check("companion answers", 'here' in (comp.get('response') or ''), comp)
+check("companion reserves <= 400 output tokens",
+      calls[0]['payload'].get('max_tokens') == 400, calls[0]['payload'])
+
+# Groq OTPM 429s say "try again in ~21s" and clear within that minute: one
+# quiet retry is worth it, so they must classify as transient (<= 25s
+# ceiling), while a long-window hint stays exhausted.
+otpm_error = llm.LLMError(
+    'all failed',
+    last_error=requests.HTTPError('HTTP 429', response=error_response(
+        429, 'Rate limit reached ... output tokens per minute (OTPM): Limit '
+             '1000, Used 658, Requested 700. Please try again in 21.48s.')))
+check("Groq OTPM hint (~21s) classifies as transient",
+      chat._classify_llm_failure(otpm_error)[0] == 'transient',
+      chat._classify_llm_failure(otpm_error))
+long_hint = llm.LLMError(
+    'all failed',
+    last_error=requests.HTTPError('HTTP 429', response=error_response(
+        429, 'Please try again in 55.0s')))
+check("long-window hint still classifies as exhausted",
+      chat._classify_llm_failure(long_hint)[0] == 'exhausted')
 
 print("=" * 74)
 if FAILURES:

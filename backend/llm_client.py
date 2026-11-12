@@ -25,14 +25,18 @@ Speed design:
   and 5xx get at most one quick same-provider retry. A 4xx that looks like a
   bad request (e.g. a provider rejecting the thinking-disable extra) is retried
   once WITHOUT the extras before giving up on that provider. A server-side
-  json_object validation rejection (the model produced one prose generation
-  instead of JSON) is retried as-is, because the request itself was fine.
+  json_object validation rejection (the model produced prose instead of JSON)
+  is first salvaged - Groq echoes the rejected generation, and if it merely
+  chatted a lead-in before its JSON, that object is returned as-is - then
+  retried with an explicit JSON-only reminder appended, up to twice
+  (_MAX_JSON_BLIP_RETRIES).
 
 The caller owns the response contract: this layer returns text, never parses it
 into clinical structure. Logging records provider, model, latency and token
 counts - never message content or any user data.
 """
 
+import json
 import logging
 import os
 import time
@@ -54,7 +58,10 @@ DEFAULTS = {
     },
     'gemini': {
         'base_url': 'https://generativelanguage.googleapis.com/v1beta/openai/',
-        'model': 'gemini-2.5-flash',
+        # Google rotates model IDs aggressively (gemini-2.0/2.5-flash now
+        # answer 404 "no longer available to new users"); this ID was
+        # verified live with the app's full JSON payload in Oct 2026.
+        'model': 'gemini-3.1-flash-lite',
     },
 }
 DEFAULT_ORDER = ('qwen', 'groq', 'gemini')
@@ -62,9 +69,12 @@ DEFAULT_ORDER = ('qwen', 'groq', 'gemini')
 DEFAULT_TIMEOUT_SECONDS = 18
 DEFAULT_MAX_TOKENS = 700
 
-# Two attempts per provider maximum: the first with thinking disabled, and a
-# single quick retry either without the extras (400) or as-is (timeout/5xx).
+# Per provider: one generic retry (first attempt with thinking capped, then
+# once without the extras on a config 400, or as-is on timeout/5xx), PLUS up
+# to _MAX_JSON_BLIP_RETRIES quick as-is retries for json_object validation
+# blips - those requests are valid, only the generation was prose.
 _MAX_ATTEMPTS_PER_PROVIDER = 2
+_MAX_JSON_BLIP_RETRIES = 2
 
 
 class LLMError(Exception):
@@ -157,17 +167,19 @@ def _extras(name):
         # 2.5+ models (do not also send a thinking budget - they conflict).
         return {'reasoning_effort': 'none'}
     if name == 'groq':
-        # Groq honors reasoning_effort (docs: gpt-oss-20b/120b; verified HTTP
-        # 200 on qwen/qwen3.8-27b as well, where effort=low keeps the hidden
-        # reasoning to a few tokens - which matters because reasoning counts
-        # against LLM_MAX_TOKENS and can otherwise starve the JSON budget).
-        # GROQ_REASONING_EFFORT: low | medium | high; any other value (e.g.
-        # "off") omits the field entirely. Unset -> low = fast replies.
-        # If a model ever rejects the field, the existing config-400 retry
-        # re-sends the same request once WITHOUT extras (chat_completion).
+        # Groq documents reasoning_effort ONLY for GPT-OSS 20B/120B. Sending
+        # it to other models is accepted but measurably hurts json_object
+        # compliance (qwen/qwen3.8-27b: 3/3 prose generations with effort=low
+        # vs 2/3 without, A/B on this app's own turn-2 payload) - so the knob
+        # applies only where the docs support it, protecting the conversation's
+        # JSON reliability. GROQ_REASONING_EFFORT: low|medium|high (default
+        # low); any other value (e.g. off) omits the field entirely.
         effort = _env('GROQ_REASONING_EFFORT')
         effort = (effort or 'low').strip().lower()
-        if effort in ('low', 'medium', 'high'):
+        if effort not in ('low', 'medium', 'high'):
+            return {}
+        model = _env('GROQ_MODEL') or DEFAULTS['groq']['model']
+        if 'gpt-oss' in model:
             return {'reasoning_effort': effort}
         return {}
     return {}
@@ -183,6 +195,40 @@ def _json_validate_failed(exc):
     return 'json_validate_failed' in text
 
 
+def _salvage_blip(exc):
+    """Groq echoes the rejected generation in the 400 body
+    (error.failed_generation). When the model chatted a lead-in sentence
+    BEFORE its JSON, that object is exactly what the caller's tolerant
+    parser would have accepted had validation passed - return it instead
+    of regenerating a whole new turn. Pure-prose blips (no braces) return
+    None and take the retry path."""
+    response = getattr(exc, 'response', None)
+    text = getattr(response, 'text', '') or ''
+    try:
+        generation = (json.loads(text).get('error') or {}).get('failed_generation') or ''
+    except Exception:  # noqa: BLE001 - malformed body just means "no salvage"
+        return None
+    start, end = generation.find('{'), generation.rfind('}')
+    if start == -1 or end <= start:
+        return None
+    candidate = generation[start:end + 1]
+    try:
+        parsed = json.loads(candidate)
+    except Exception:  # noqa: BLE001 - braces without valid JSON inside
+        return None
+    return candidate if isinstance(parsed, dict) else None
+
+
+# Appended (as a system message) when retrying after a JSON blip: the same
+# request verbatim blips again far too often, while one explicit reminder
+# measurably restores json_object compliance.
+_JSON_BLIP_NUDGE = (
+    'REMINDER: reply with ONLY the single valid JSON object the system prompt '
+    'describes - no chat message, no lead-in sentence, no explanation, no '
+    'text before or after the braces.'
+)
+
+
 def _build_payload(provider, messages, json_mode, with_extras,
                    timeout=None, max_tokens=None):
     payload = {
@@ -194,6 +240,13 @@ def _build_payload(provider, messages, json_mode, with_extras,
         # Every documented provider here supports json_object mode. Parsing
         # and validation stay on the caller's side regardless.
         payload['response_format'] = {'type': 'json_object'}
+        # Structured callers want compliance, not creativity: at the
+        # providers' default temperature (1.0) qwen3.8-27b regularly opens
+        # its JSON answer with a chatty lead-in sentence, which fails
+        # Groq's server-side json validation. Low temperature is the single
+        # cheapest lever against that. Non-JSON calls (the companion) keep
+        # the warmer default.
+        payload['temperature'] = 0.3
     if with_extras:
         payload.update(_extras(provider['name']))
     return payload
@@ -265,6 +318,7 @@ def chat_completion(messages, json_mode=False, timeout=None, max_tokens=None):
     for provider in providers:
         with_extras = bool(_extras(provider['name']))
         retry_left = _MAX_ATTEMPTS_PER_PROVIDER - 1
+        blip_left = _MAX_JSON_BLIP_RETRIES
         while True:
             try:
                 content, latency_ms, usage = _post_chat(
@@ -291,11 +345,30 @@ def chat_completion(messages, json_mode=False, timeout=None, max_tokens=None):
                 last_error = exc
                 if status == 429:
                     break  # rate limited: the next provider may still serve
-                if kind == 'config' and status == 400 and retry_left > 0 \
+                if kind == 'config' and status == 400 and blip_left > 0 \
                         and _json_validate_failed(exc):
                     # Checked BEFORE the extras branch: a JSON-blip is a
-                    # generation issue, not a param issue - retry as-is.
-                    retry_left -= 1  # same request again - see _json_validate_failed
+                    # generation issue, not a param issue. Own budget:
+                    # blips are probabilistic, and burning the generic
+                    # retry on them leaves the turn nowhere to go.
+                    blip_left -= 1
+                    salvaged = _salvage_blip(exc)
+                    if salvaged is not None:
+                        # The rejected generation still held a valid JSON
+                        # object after its prose lead-in - the turn is good.
+                        _log_call(provider, True, latency_ms, {},
+                                  detail='salvaged_from_blip')
+                        return {
+                            'content': salvaged,
+                            'provider': provider['name'],
+                            'model': provider['model'],
+                            'latency_ms': latency_ms,
+                            'usage': {},
+                        }
+                    # Retry with one explicit JSON-only reminder appended;
+                    # the identical request repeats the same blip too often.
+                    messages = list(messages) + [
+                        {'role': 'system', 'content': _JSON_BLIP_NUDGE}]
                     continue
                 if kind == 'config' and with_extras and retry_left > 0:
                     # Most likely this model rejected the thinking-disable

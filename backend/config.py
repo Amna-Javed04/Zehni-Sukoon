@@ -35,7 +35,7 @@ class Config:
     # reading them from Flask config.
     GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', os.environ.get('Gemini_API', ''))
     GEMINI_BASE_URL = os.environ.get('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta/openai/')
-    GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash')
+    GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-3.1-flash-lite')
 
     # Conversational screening budget: per-identity daily chat-turn caps.
     # A crisis message bypasses the cap (helplines are never rate-limited).

@@ -23,3 +23,7 @@ build/
 .qoder/
 instance/
 *.db
+# Runtime logs & agent scratch artifacts — never publish
+*.log
+.cloud-attachments/
+.freebuff/
