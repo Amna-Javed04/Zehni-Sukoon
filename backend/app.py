@@ -7,8 +7,12 @@ from flask import Flask, render_template, redirect, url_for
 from flask_cors import CORS
 from dotenv import load_dotenv
 
-# Load environment variables at module-level before importing config/models
-load_dotenv(override=True)
+# Load environment variables at module-level before importing config/models.
+# override=False is deliberate: real environment variables (Render/Railway/
+# Docker) must always win over a local .env file. With override=True a stray
+# .env inside the container silently downgraded FLASK_ENV to 'development',
+# which disabled DEBUG=False and skipped the production secrets guard.
+load_dotenv(override=False)
 
 from .models import db
 from .config import config
