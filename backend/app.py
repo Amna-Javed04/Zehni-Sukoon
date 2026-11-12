@@ -2,10 +2,13 @@
 Zehni Sukoon — Flask Application Factory
 """
 
+import logging
 import os
 from flask import Flask, render_template, redirect, url_for
 from flask_cors import CORS
 from dotenv import load_dotenv
+from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError, OperationalError, ProgrammingError
 
 # Load environment variables at module-level before importing config/models.
 # override=False is deliberate: real environment variables (Render/Railway/
@@ -16,6 +19,48 @@ load_dotenv(override=False)
 
 from .models import db
 from .config import config
+
+logger = logging.getLogger('zs.app')
+
+# Arbitrary but fixed key for the Postgres advisory lock that serialises
+# schema creation across gunicorn workers.
+_SCHEMA_LOCK_KEY = 915372011
+
+
+def _initialize_database(app: Flask) -> None:
+    """
+    Create the tables exactly once, even when several workers boot together.
+
+    Gunicorn starts its workers in parallel and each one runs this path. On a
+    fresh Postgres database two workers can both pass create_all's checkfirst
+    at the same instant and both issue CREATE TABLE; the loser then fails on
+    pg_type's unique index with an IntegrityError, which kills that worker and
+    makes the master shut down - a first-deploy crash loop that only clears
+    once the tables happen to exist. A transaction-scoped advisory lock
+    serialises the DDL, and duplicate-schema errors are tolerated so a losing
+    worker keeps booting instead of taking the app down.
+    """
+    with app.app_context():
+        engine = db.engine
+        try:
+            if engine.dialect.name == 'postgresql':
+                with engine.begin() as conn:
+                    conn.execute(text('SELECT pg_advisory_xact_lock(:k)'),
+                                 {'k': _SCHEMA_LOCK_KEY})
+                    # DDL on the same connection keeps it inside the lock.
+                    db.metadata.create_all(bind=conn)
+            else:
+                db.create_all()
+        except (IntegrityError, ProgrammingError) as exc:
+            db.session.rollback()
+            logger.warning('Schema already created by another worker (%s: %s); continuing.',
+                           type(exc).__name__, str(exc).split('\n')[0][:200])
+        except OperationalError as exc:
+            db.session.rollback()
+            if 'already exists' in str(exc).lower():
+                logger.warning('Schema already created by another worker; continuing.')
+            else:
+                raise
 
 
 def create_app(env: str = None) -> Flask:
@@ -137,8 +182,7 @@ def create_app(env: str = None) -> Flask:
     def health():
         return {'status': 'ok', 'service': 'Zehni Sukoon API'}
 
-    # --- DB Init ---
-    with app.app_context():
-        db.create_all()
+    # --- DB Init (race-safe across gunicorn workers) ---
+    _initialize_database(app)
 
     return app

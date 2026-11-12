@@ -24,6 +24,11 @@ from datetime import datetime, timezone, timedelta
 
 sys.path.insert(0, ".")
 
+# Hermetic test: never inherit a deployment mode from the caller's .env.
+# In production mode create_app() refuses to start without real secrets, which
+# has nothing to do with the privacy contract these checks cover.
+os.environ['FLASK_ENV'] = 'development'
+
 # ── Isolated temp DB: patch config BEFORE create_app reads it ──────────
 _tmpdir = tempfile.mkdtemp(prefix="zs_therapist_test_")
 _db_uri = "sqlite:///" + os.path.join(_tmpdir, "therapist_test.db")
