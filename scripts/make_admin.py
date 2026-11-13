@@ -1,15 +1,18 @@
-"""Grant admin access to an account, or list accounts.
+r"""Grant admin access to an account, or list accounts.
 
 There is deliberately no API that creates an admin (signup always produces a
 non-admin user), so this is the supported way to promote yourself.
 
 Usage
 -----
-    # Reads DATABASE_URL from the environment if set:
+    # Bash / Git Bash — URL through the environment (recommended):
     DATABASE_URL="postgresql://..." python scripts/make_admin.py you@example.com
 
-    # Otherwise it prompts for the URL (input hidden), so nothing is stored
-    # in your shell history:
+    # PowerShell (note the $env: form and the semicolon):
+    $env:DATABASE_URL = "postgresql://..."; .\venv\Scripts\python.exe scripts\make_admin.py you@example.com
+
+    # Otherwise it prompts for the URL (input hidden). Pasting into a hidden
+    # prompt is unreliable on Windows - prefer the environment variable.
     python scripts/make_admin.py you@example.com
 
     # Just look at what exists:
@@ -30,16 +33,37 @@ import sys
 from sqlalchemy import create_engine, text
 
 
-def _resolve_url() -> str:
-    url = (os.environ.get('DATABASE_URL') or '').strip()
-    if not url:
-        entered = getpass.getpass('Database URL (input hidden): ').strip()
-        url = entered
-    if not url:
-        sys.exit('No database URL given.')
-    # Hosting dashboards often hand out the legacy scheme.
+def _clean(raw: str) -> str:
+    """Strip whitespace/quotes picked up by a paste; modernise the scheme."""
+    url = (raw or '').strip().strip('"').strip("'").strip()
     if url.startswith('postgres://'):
         url = 'postgresql://' + url[len('postgres://'):]
+    return url
+
+
+def _resolve_url() -> str:
+    url = _clean(os.environ.get('DATABASE_URL', ''))
+    from_prompt = False
+    if not url:
+        url = _clean(getpass.getpass('Database URL (input hidden): '))
+        from_prompt = True
+    if not url:
+        sys.exit('No database URL given.')
+    if '://' not in url:
+        # Almost always a bad paste: on Windows the hidden prompt can capture
+        # stale clipboard text (e.g. a venv activation line) instead of a URL.
+        sys.exit(
+            'That does not look like a database URL - it has no "://".\n'
+            + ('The hidden prompt cannot reliably take a paste on Windows.\n'
+               if from_prompt else '')
+            + 'Copy the External Database URL from Render, then run one of these:\n\n'
+            '  PowerShell:\n'
+            '    $env:DATABASE_URL = "postgresql://..."\n'
+            '    .\\venv\\Scripts\\python.exe scripts\\make_admin.py you@example.com\n\n'
+            '  Git Bash:\n'
+            '    DATABASE_URL="postgresql://..." ./venv/Scripts/python.exe '
+            'scripts/make_admin.py you@example.com\n'
+        )
     return url
 
 
